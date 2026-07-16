@@ -48,6 +48,12 @@ export function App(): JSX.Element {
     () => themes.find((theme) => theme.id === selectedThemeId),
     [themes, selectedThemeId],
   );
+  const updateAvailableCount = themes.filter(
+    (theme) => updates[theme.id]?.hasUpdate,
+  ).length;
+  const managedThemeCount = themes.filter(
+    (theme) => theme.type === "managed",
+  ).length;
 
   async function refreshProfiles(): Promise<void> {
     setActionPending("refreshProfiles", true);
@@ -304,8 +310,15 @@ export function App(): JSX.Element {
   return (
     <main className="app-shell" aria-busy={isBusy}>
       <header className="app-header">
-        <h1>Firefox Theme Manager</h1>
-        <p>
+        <p className="eyebrow">FFThemer</p>
+        <div className="headline-row">
+          <h1>Firefox Theme Manager</h1>
+          <div className="status-pills" aria-label="Theme summary">
+            <span className="pill">Managed {managedThemeCount}</span>
+            <span className="pill">Updates {updateAvailableCount}</span>
+          </div>
+        </div>
+        <p className="subhead">
           Install, switch, update, and safely manage userChrome.css themes by
           profile.
         </p>
@@ -335,15 +348,31 @@ export function App(): JSX.Element {
             type="button"
             onClick={refreshProfiles}
             disabled={isActionPending("refreshProfiles")}
+            className="button secondary"
           >
-            Refresh profiles
+            <span className="button-icon" aria-hidden="true">
+              <svg viewBox="0 0 16 16" focusable="false">
+                <path d="M13.2 8a5.2 5.2 0 1 1-1.4-3.6" />
+                <path d="M13.2 3.4v2.8h-2.8" />
+              </svg>
+            </span>
+            <span>Refresh profiles</span>
           </button>
           <button
             type="button"
             onClick={onRestoreBackup}
             disabled={isActionPending("restoreBackup") || !status?.backupPath}
+            className="button secondary"
           >
-            Restore original backup
+            <span className="button-icon" aria-hidden="true">
+              <svg viewBox="0 0 16 16" focusable="false">
+                <path d="M2.5 8.2A5.5 5.5 0 0 1 8 2.8" />
+                <path d="M8 2.8h2.7" />
+                <path d="M8 2.8V5.5" />
+                <path d="M13.5 7.8A5.5 5.5 0 1 1 8 2.8" />
+              </svg>
+            </span>
+            <span>Restore original backup</span>
           </button>
         </div>
       </section>
@@ -365,22 +394,40 @@ export function App(): JSX.Element {
             Repo must include userChrome.css or userContent.css.
           </small>
           <div className="row-actions">
-            <button type="submit" disabled={isActionPending("previewRepo")}>
-              Preview repository
+            <button
+              type="submit"
+              disabled={isActionPending("previewRepo")}
+              className="button secondary"
+            >
+              <span className="button-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" focusable="false">
+                  <circle cx="8" cy="8" r="2.2" />
+                  <path d="M1.8 8s2-3.5 6.2-3.5S14.2 8 14.2 8s-2 3.5-6.2 3.5S1.8 8 1.8 8Z" />
+                </svg>
+              </span>
+              <span>Preview repository</span>
             </button>
             <button
               type="button"
               onClick={onInstallTheme}
               disabled={isActionPending("installTheme") || !repoPreview}
+              className="button primary"
             >
-              Install theme
+              <span className="button-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" focusable="false">
+                  <path d="M8 2.2v7.6" />
+                  <path d="m5.2 7.1 2.8 2.7 2.8-2.7" />
+                  <path d="M3 13.2h10" />
+                </svg>
+              </span>
+              <span>Install theme</span>
             </button>
           </div>
         </form>
 
         {repoPreview ? (
           <article className="preview-card" aria-live="polite">
-            <h3>{repoPreview.suggestedThemeName}</h3>
+            <h3 className="preview-title">{repoPreview.suggestedThemeName}</h3>
             <p>
               Branch: <strong>{repoPreview.branch}</strong>
             </p>
@@ -424,20 +471,37 @@ export function App(): JSX.Element {
             );
           })}
         </select>
-        <div className="row-actions">
+        <div
+          className="row-actions segmented-actions"
+          role="group"
+          aria-label="Theme actions"
+        >
           <button
             type="button"
             onClick={onSwitchTheme}
             disabled={isActionPending("switchTheme") || !selectedThemeId}
+            className="button primary segment"
           >
-            Activate selected theme
+            <span className="button-icon" aria-hidden="true">
+              <svg viewBox="0 0 16 16" focusable="false">
+                <path d="M3 8.4 6.3 12 13 4" />
+              </svg>
+            </span>
+            <span>Activate selected theme</span>
           </button>
           <button
             type="button"
             onClick={onCheckUpdates}
             disabled={isActionPending("checkUpdates") || !profilePath}
+            className="button secondary segment"
           >
-            Check updates
+            <span className="button-icon" aria-hidden="true">
+              <svg viewBox="0 0 16 16" focusable="false">
+                <path d="M13.2 8a5.2 5.2 0 1 1-1.4-3.6" />
+                <path d="M13.2 3.4v2.8h-2.8" />
+              </svg>
+            </span>
+            <span>Check updates</span>
           </button>
           <button
             type="button"
@@ -448,8 +512,16 @@ export function App(): JSX.Element {
               !selectedTheme ||
               selectedTheme.type !== "managed"
             }
+            className="button danger segment"
           >
-            Delete selected theme
+            <span className="button-icon" aria-hidden="true">
+              <svg viewBox="0 0 16 16" focusable="false">
+                <path d="M3.8 4.2h8.4" />
+                <path d="M6.1 4.2V3h3.8v1.2" />
+                <path d="M5 4.2v8.2h6V4.2" />
+              </svg>
+            </span>
+            <span>Delete selected theme</span>
           </button>
           <button
             type="button"
@@ -460,17 +532,26 @@ export function App(): JSX.Element {
               !updates[selectedThemeId]?.hasUpdate
             }
             aria-label="Update selected theme"
+            className="button secondary segment"
           >
-            Update selected theme
+            <span className="button-icon" aria-hidden="true">
+              <svg viewBox="0 0 16 16" focusable="false">
+                <path d="M13.2 8a5.2 5.2 0 1 1-1.4-3.6" />
+                <path d="M13.2 3.4v2.8h-2.8" />
+              </svg>
+            </span>
+            <span>Update selected theme</span>
           </button>
         </div>
 
         <ul className="theme-list" aria-label="Theme status list">
           {themes.map((theme) => (
             <li key={`status-${theme.id}`}>
-              <strong>{theme.name}</strong>
-              <span>{theme.type === "managed" ? "Managed" : "External"}</span>
-              <span>
+              <strong className="theme-name">{theme.name}</strong>
+              <span className="theme-badge">
+                {theme.type === "managed" ? "Managed" : "External"}
+              </span>
+              <span className="theme-badge">
                 {updates[theme.id]?.hasUpdate
                   ? "Update available"
                   : "Up to date"}
