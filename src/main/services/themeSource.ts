@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import AdmZip from "adm-zip";
 import { RepoPreview } from "../../shared/types";
 import { AppError } from "./errors";
-import { listFilesRecursive, slugifyName } from "./fsUtils";
+import { exists, listFilesRecursive, slugifyName } from "./fsUtils";
 import {
   getArchiveUrl,
   getDefaultBranch,
@@ -19,6 +19,15 @@ import {
 } from "./fileSafety";
 
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
+const PREVIEW_CACHE_TTL_MS = 10 * 60 * 1000;
+
+interface PreviewCacheEntry {
+  resolved: ResolvedThemeSource;
+  screenshotDataUrl?: string;
+  createdAt: number;
+}
+
+const previewCache = new Map<string, PreviewCacheEntry>();
 
 export interface ResolvedThemeSource {
   owner: string;
@@ -32,6 +41,54 @@ export interface ResolvedThemeSource {
   hasUserChrome: boolean;
   hasUserContent: boolean;
   warningExecutables: string[];
+}
+
+interface ResolveOptions {
+  preferCached?: boolean;
+  expectedCommit?: string;
+}
+
+function normalizeSourceUrl(sourceUrl: string): string {
+  return sourceUrl.trim();
+}
+
+async function getCachedResolvedThemeSource(
+  sourceUrl: string,
+  expectedCommit?: string,
+): Promise<ResolvedThemeSource | undefined> {
+  const key = normalizeSourceUrl(sourceUrl);
+  const entry = previewCache.get(key);
+  if (!entry) {
+    return undefined;
+  }
+
+  if (Date.now() - entry.createdAt > PREVIEW_CACHE_TTL_MS) {
+    previewCache.delete(key);
+    return undefined;
+  }
+
+  if (expectedCommit && entry.resolved.commitSha !== expectedCommit) {
+    return undefined;
+  }
+
+  if (!(await exists(entry.resolved.themeRoot))) {
+    previewCache.delete(key);
+    return undefined;
+  }
+
+  return entry.resolved;
+}
+
+function cacheResolvedThemeSource(
+  sourceUrl: string,
+  resolved: ResolvedThemeSource,
+  screenshotDataUrl?: string,
+): void {
+  previewCache.set(normalizeSourceUrl(sourceUrl), {
+    resolved,
+    screenshotDataUrl,
+    createdAt: Date.now(),
+  });
 }
 
 function mimeTypeFromExtension(ext: string): string {
@@ -139,7 +196,18 @@ async function findPreviewImage(
 export async function resolveThemeFromGithub(
   sourceUrl: string,
   onDownloadProgress?: (receivedBytes: number, totalBytes?: number) => void,
+  options?: ResolveOptions,
 ): Promise<ResolvedThemeSource> {
+  if (options?.preferCached) {
+    const cached = await getCachedResolvedThemeSource(
+      sourceUrl,
+      options.expectedCommit,
+    );
+    if (cached) {
+      return cached;
+    }
+  }
+
   const { owner, repo } = parseGithubUrl(sourceUrl);
   const branch = await getDefaultBranch(owner, repo);
   const commitSha = await getLatestCommit(owner, repo, branch);
@@ -177,7 +245,7 @@ export async function resolveThemeFromGithub(
     .filter((file) => isExecutableFile(file))
     .map((file) => path.relative(extractedRoot, file));
 
-  return {
+  const resolved: ResolvedThemeSource = {
     owner,
     repo,
     branch,
@@ -190,6 +258,9 @@ export async function resolveThemeFromGithub(
     hasUserContent,
     warningExecutables,
   };
+
+  cacheResolvedThemeSource(sourceUrl, resolved);
+  return resolved;
 }
 
 async function downloadArchiveWithProgress(
@@ -243,8 +314,13 @@ async function downloadArchiveWithProgress(
 export async function buildRepoPreview(
   sourceUrl: string,
 ): Promise<RepoPreview> {
-  const resolved = await resolveThemeFromGithub(sourceUrl);
-  const screenshotDataUrl = await findPreviewImage(resolved.themeRoot);
+  const resolved = await resolveThemeFromGithub(sourceUrl, undefined, {
+    preferCached: true,
+  });
+  const cached = previewCache.get(normalizeSourceUrl(sourceUrl));
+  const screenshotDataUrl =
+    cached?.screenshotDataUrl ?? (await findPreviewImage(resolved.themeRoot));
+  cacheResolvedThemeSource(sourceUrl, resolved, screenshotDataUrl);
 
   return {
     valid: true,

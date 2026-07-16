@@ -50,6 +50,7 @@ export interface InstallThemeInput {
   profilePath: string;
   sourceUrl: string;
   customThemeName?: string;
+  expectedCommit?: string;
 }
 
 export interface InstallThemeResult {

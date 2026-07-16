@@ -169,6 +169,20 @@ async function writeActiveLoaderFiles(
   }
 }
 
+async function clearRootLoaderFiles(profilePath: string): Promise<void> {
+  const chromePath = getChromePath(profilePath);
+  const chromeLoaderPath = path.join(chromePath, "userChrome.css");
+  const contentLoaderPath = path.join(chromePath, "userContent.css");
+
+  if (await exists(chromeLoaderPath)) {
+    await fs.rm(chromeLoaderPath, { force: true });
+  }
+
+  if (await exists(contentLoaderPath)) {
+    await fs.rm(contentLoaderPath, { force: true });
+  }
+}
+
 async function copyDirSafe(source: string, destination: string): Promise<void> {
   const files = await listFilesRecursive(source);
   for (const file of files) {
@@ -313,6 +327,10 @@ export async function installTheme(
   const resolved = await resolveThemeFromGithub(
     input.sourceUrl,
     onDownloadProgress,
+    {
+      preferCached: true,
+      expectedCommit: input.expectedCommit,
+    },
   );
   const themesRoot = getThemesRoot(profilePath);
   await ensureDir(themesRoot);
@@ -390,6 +408,7 @@ export async function deleteTheme(
 
   const state = await readState(profilePath);
   if (state.activeThemeId === themeId) {
+    await clearRootLoaderFiles(profilePath);
     await writeState(profilePath, {
       ...state,
       activeThemeId: undefined,

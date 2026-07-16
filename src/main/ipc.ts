@@ -1,5 +1,8 @@
 import { ipcMain } from "electron";
-import { detectFirefoxProfiles } from "./services/firefoxProfiles";
+import {
+  assertKnownFirefoxProfilePath,
+  detectFirefoxProfiles,
+} from "./services/firefoxProfiles";
 import {
   checkForUpdates,
   deleteTheme,
@@ -38,6 +41,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("status:get", async (_event, profilePath: string) => {
     try {
+      await assertKnownFirefoxProfilePath(profilePath);
       return await getStatus(profilePath);
     } catch (error) {
       throw normalizeError(error);
@@ -46,6 +50,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("themes:list", async (_event, profilePath: string) => {
     try {
+      await assertKnownFirefoxProfilePath(profilePath);
       return await listThemes(profilePath);
     } catch (error) {
       throw normalizeError(error);
@@ -62,6 +67,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("themes:install", async (_event, input) => {
     try {
+      await assertKnownFirefoxProfilePath(input.profilePath);
       return await installTheme(input, (receivedBytes, totalBytes) => {
         _event.sender.send("download:progress", {
           phase: "download",
@@ -81,6 +87,7 @@ export function registerIpcHandlers(): void {
     "themes:switch",
     async (_event, profilePath: string, themeId: string) => {
       try {
+        await assertKnownFirefoxProfilePath(profilePath);
         return await switchTheme(profilePath, themeId);
       } catch (error) {
         throw normalizeError(error);
@@ -92,6 +99,7 @@ export function registerIpcHandlers(): void {
     "themes:delete",
     async (_event, profilePath: string, themeId: string) => {
       try {
+        await assertKnownFirefoxProfilePath(profilePath);
         return await deleteTheme(profilePath, themeId);
       } catch (error) {
         throw normalizeError(error);
@@ -101,6 +109,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("themes:updates", async (_event, profilePath: string) => {
     try {
+      await assertKnownFirefoxProfilePath(profilePath);
       return await checkForUpdates(profilePath);
     } catch (error) {
       throw normalizeError(error);
@@ -111,6 +120,7 @@ export function registerIpcHandlers(): void {
     "themes:update",
     async (_event, profilePath: string, themeId: string) => {
       try {
+        await assertKnownFirefoxProfilePath(profilePath);
         return await updateTheme(
           profilePath,
           themeId,
@@ -133,6 +143,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("backup:restore", async (_event, profilePath: string) => {
     try {
+      await assertKnownFirefoxProfilePath(profilePath);
       return await restoreOriginalBackup(profilePath);
     } catch (error) {
       throw normalizeError(error);

@@ -8,8 +8,6 @@ import {
   UpdateCheckResult,
 } from "@shared/types";
 
-type BusyState = "idle" | "loading";
-
 function errorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error) {
     return String((error as { message: unknown }).message);
@@ -29,7 +27,22 @@ export function App(): JSX.Element {
   const [downloadProgress, setDownloadProgress] =
     useState<DownloadProgressEvent | null>(null);
   const [notice, setNotice] = useState<string>("");
-  const [busy, setBusy] = useState<BusyState>("idle");
+  const [pendingActions, setPendingActions] = useState<Record<string, boolean>>(
+    {},
+  );
+
+  function setActionPending(action: string, pending: boolean): void {
+    setPendingActions((current) => ({
+      ...current,
+      [action]: pending,
+    }));
+  }
+
+  function isActionPending(action: string): boolean {
+    return Boolean(pendingActions[action]);
+  }
+
+  const isBusy = Object.values(pendingActions).some(Boolean);
 
   const selectedTheme = useMemo(
     () => themes.find((theme) => theme.id === selectedThemeId),
@@ -37,7 +50,7 @@ export function App(): JSX.Element {
   );
 
   async function refreshProfiles(): Promise<void> {
-    setBusy("loading");
+    setActionPending("refreshProfiles", true);
     try {
       const profileList = await window.ffthemer.getProfiles();
       setProfiles(profileList);
@@ -52,7 +65,7 @@ export function App(): JSX.Element {
     } catch (error) {
       setNotice(errorMessage(error));
     } finally {
-      setBusy("idle");
+      setActionPending("refreshProfiles", false);
     }
   }
 
@@ -61,7 +74,7 @@ export function App(): JSX.Element {
       return;
     }
 
-    setBusy("loading");
+    setActionPending("refreshProfileData", true);
     try {
       const [newStatus, themeList] = await Promise.all([
         window.ffthemer.getStatus(targetProfilePath),
@@ -75,7 +88,7 @@ export function App(): JSX.Element {
     } catch (error) {
       setNotice(errorMessage(error));
     } finally {
-      setBusy("idle");
+      setActionPending("refreshProfileData", false);
     }
   }
 
@@ -128,7 +141,7 @@ export function App(): JSX.Element {
       return;
     }
 
-    setBusy("loading");
+    setActionPending("previewRepo", true);
     setDownloadProgress(null);
     try {
       const preview = await window.ffthemer.previewRepo(repoUrl.trim());
@@ -146,7 +159,7 @@ export function App(): JSX.Element {
       setRepoPreview(null);
       setNotice(errorMessage(error));
     } finally {
-      setBusy("idle");
+      setActionPending("previewRepo", false);
     }
   }
 
@@ -155,13 +168,14 @@ export function App(): JSX.Element {
       return;
     }
 
-    setBusy("loading");
+    setActionPending("installTheme", true);
     setDownloadProgress(null);
     try {
       const result = await window.ffthemer.installTheme({
         profilePath,
         sourceUrl: repoUrl.trim(),
         customThemeName: repoPreview?.suggestedThemeName,
+        expectedCommit: repoPreview?.commitSha,
       });
 
       await refreshProfileData(profilePath);
@@ -174,7 +188,7 @@ export function App(): JSX.Element {
     } catch (error) {
       setNotice(errorMessage(error));
     } finally {
-      setBusy("idle");
+      setActionPending("installTheme", false);
     }
   }
 
@@ -183,7 +197,7 @@ export function App(): JSX.Element {
       return;
     }
 
-    setBusy("loading");
+    setActionPending("switchTheme", true);
     try {
       await window.ffthemer.switchTheme(profilePath, selectedThemeId);
       await refreshProfileData(profilePath);
@@ -191,7 +205,7 @@ export function App(): JSX.Element {
     } catch (error) {
       setNotice(errorMessage(error));
     } finally {
-      setBusy("idle");
+      setActionPending("switchTheme", false);
     }
   }
 
@@ -212,7 +226,7 @@ export function App(): JSX.Element {
       return;
     }
 
-    setBusy("loading");
+    setActionPending("deleteTheme", true);
     try {
       await window.ffthemer.deleteTheme(profilePath, selectedThemeId);
       await refreshProfileData(profilePath);
@@ -220,7 +234,7 @@ export function App(): JSX.Element {
     } catch (error) {
       setNotice(errorMessage(error));
     } finally {
-      setBusy("idle");
+      setActionPending("deleteTheme", false);
     }
   }
 
@@ -229,7 +243,7 @@ export function App(): JSX.Element {
       return;
     }
 
-    setBusy("loading");
+    setActionPending("checkUpdates", true);
     try {
       const results = await window.ffthemer.checkUpdates(profilePath);
       const next: Record<string, UpdateCheckResult> = {};
@@ -241,7 +255,7 @@ export function App(): JSX.Element {
     } catch (error) {
       setNotice(errorMessage(error));
     } finally {
-      setBusy("idle");
+      setActionPending("checkUpdates", false);
     }
   }
 
@@ -250,7 +264,8 @@ export function App(): JSX.Element {
       return;
     }
 
-    setBusy("loading");
+    setActionPending("updateTheme", true);
+    setDownloadProgress(null);
     try {
       await window.ffthemer.updateTheme(profilePath, themeId);
       await refreshProfileData(profilePath);
@@ -258,7 +273,7 @@ export function App(): JSX.Element {
     } catch (error) {
       setNotice(errorMessage(error));
     } finally {
-      setBusy("idle");
+      setActionPending("updateTheme", false);
     }
   }
 
@@ -274,7 +289,7 @@ export function App(): JSX.Element {
       return;
     }
 
-    setBusy("loading");
+    setActionPending("restoreBackup", true);
     try {
       await window.ffthemer.restoreBackup(profilePath);
       await refreshProfileData(profilePath);
@@ -282,12 +297,12 @@ export function App(): JSX.Element {
     } catch (error) {
       setNotice(errorMessage(error));
     } finally {
-      setBusy("idle");
+      setActionPending("restoreBackup", false);
     }
   }
 
   return (
-    <main className="app-shell" aria-busy={busy === "loading"}>
+    <main className="app-shell" aria-busy={isBusy}>
       <header className="app-header">
         <h1>Firefox Theme Manager</h1>
         <p>
@@ -319,14 +334,14 @@ export function App(): JSX.Element {
           <button
             type="button"
             onClick={refreshProfiles}
-            disabled={busy === "loading"}
+            disabled={isActionPending("refreshProfiles")}
           >
             Refresh profiles
           </button>
           <button
             type="button"
             onClick={onRestoreBackup}
-            disabled={busy === "loading" || !status?.backupPath}
+            disabled={isActionPending("restoreBackup") || !status?.backupPath}
           >
             Restore original backup
           </button>
@@ -350,13 +365,13 @@ export function App(): JSX.Element {
             Repo must include userChrome.css or userContent.css.
           </small>
           <div className="row-actions">
-            <button type="submit" disabled={busy === "loading"}>
+            <button type="submit" disabled={isActionPending("previewRepo")}>
               Preview repository
             </button>
             <button
               type="button"
               onClick={onInstallTheme}
-              disabled={busy === "loading" || !repoPreview}
+              disabled={isActionPending("installTheme") || !repoPreview}
             >
               Install theme
             </button>
@@ -413,14 +428,14 @@ export function App(): JSX.Element {
           <button
             type="button"
             onClick={onSwitchTheme}
-            disabled={busy === "loading" || !selectedThemeId}
+            disabled={isActionPending("switchTheme") || !selectedThemeId}
           >
             Activate selected theme
           </button>
           <button
             type="button"
             onClick={onCheckUpdates}
-            disabled={busy === "loading" || !profilePath}
+            disabled={isActionPending("checkUpdates") || !profilePath}
           >
             Check updates
           </button>
@@ -428,7 +443,7 @@ export function App(): JSX.Element {
             type="button"
             onClick={onDeleteTheme}
             disabled={
-              busy === "loading" ||
+              isActionPending("deleteTheme") ||
               !selectedThemeId ||
               !selectedTheme ||
               selectedTheme.type !== "managed"
@@ -440,7 +455,7 @@ export function App(): JSX.Element {
             type="button"
             onClick={() => onUpdateTheme(selectedThemeId)}
             disabled={
-              busy === "loading" ||
+              isActionPending("updateTheme") ||
               !selectedThemeId ||
               !updates[selectedThemeId]?.hasUpdate
             }
@@ -466,11 +481,13 @@ export function App(): JSX.Element {
       </section>
 
       <footer className="status-bar" role="status" aria-live="polite">
-        {busy === "loading"
+        {isActionPending("installTheme") || isActionPending("updateTheme")
           ? downloadProgress?.percent !== undefined
             ? `Downloading theme: ${downloadProgress.percent}%`
             : "Working..."
-          : notice || "Ready"}
+          : isBusy
+            ? "Working..."
+            : notice || "Ready"}
       </footer>
     </main>
   );

@@ -28,6 +28,11 @@ function createWindow(): void {
   } else {
     win.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
+
+  win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  win.webContents.on("will-navigate", (event) => {
+    event.preventDefault();
+  });
 }
 
 app.whenReady().then(() => {

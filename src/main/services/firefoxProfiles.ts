@@ -73,3 +73,24 @@ export async function detectFirefoxProfiles(): Promise<FirefoxProfile[]> {
 
   return profiles;
 }
+
+export async function isKnownFirefoxProfilePath(
+  candidatePath: string,
+): Promise<boolean> {
+  const profiles = await detectFirefoxProfiles();
+  const normalizedCandidate = path.resolve(candidatePath);
+  return profiles.some(
+    (profile) => path.resolve(profile.path) === normalizedCandidate,
+  );
+}
+
+export async function assertKnownFirefoxProfilePath(
+  candidatePath: string,
+): Promise<void> {
+  if (!(await isKnownFirefoxProfilePath(candidatePath))) {
+    throw new AppError(
+      "Profile path is not a detected Firefox profile",
+      "INVALID_PROFILE_PATH",
+    );
+  }
+}
