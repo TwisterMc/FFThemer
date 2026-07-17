@@ -522,25 +522,28 @@ export async function restoreOriginalBackup(
   profilePath: string,
 ): Promise<void> {
   const state = await readState(profilePath);
-  if (!state.backupPath || !(await exists(state.backupPath))) {
-    throw new AppError("No backup found for this profile", "BACKUP_NOT_FOUND");
-  }
-
   const chromePath = getChromePath(profilePath);
   await ensureDir(chromePath);
-  const backupChrome = path.join(state.backupPath, "userChrome.css");
-  const backupContent = path.join(state.backupPath, "userContent.css");
+  // Always clear managed loader files first to return to an unthemed state.
+  await clearRootLoaderFiles(profilePath);
 
-  if (await exists(backupChrome)) {
-    await fs.copyFile(backupChrome, path.join(chromePath, "userChrome.css"));
-  }
+  const hasBackup = Boolean(state.backupPath && (await exists(state.backupPath)));
+  if (hasBackup && state.backupPath) {
+    const backupChrome = path.join(state.backupPath, "userChrome.css");
+    const backupContent = path.join(state.backupPath, "userContent.css");
 
-  if (await exists(backupContent)) {
-    await fs.copyFile(backupContent, path.join(chromePath, "userContent.css"));
+    if (await exists(backupChrome)) {
+      await fs.copyFile(backupChrome, path.join(chromePath, "userChrome.css"));
+    }
+
+    if (await exists(backupContent)) {
+      await fs.copyFile(backupContent, path.join(chromePath, "userContent.css"));
+    }
   }
 
   await writeState(profilePath, {
     ...state,
     activeThemeId: undefined,
+    backupPath: hasBackup ? state.backupPath : undefined,
   });
 }
