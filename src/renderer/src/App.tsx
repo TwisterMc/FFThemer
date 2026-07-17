@@ -497,7 +497,7 @@ export function App(): JSX.Element {
                     </svg>
                   </span>
                 ) : null}
-                <span>{status?.activeThemeId ? "Inactive" : "Active"}</span>
+                <span>{status?.activeThemeId ? "Activate" : "Active"}</span>
               </button>
             </div>
           </li>
