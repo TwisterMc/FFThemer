@@ -527,7 +527,9 @@ export async function restoreOriginalBackup(
   // Always clear managed loader files first to return to an unthemed state.
   await clearRootLoaderFiles(profilePath);
 
-  const hasBackup = Boolean(state.backupPath && (await exists(state.backupPath)));
+  const hasBackup = Boolean(
+    state.backupPath && (await exists(state.backupPath)),
+  );
   if (hasBackup && state.backupPath) {
     const backupChrome = path.join(state.backupPath, "userChrome.css");
     const backupContent = path.join(state.backupPath, "userContent.css");
@@ -537,7 +539,10 @@ export async function restoreOriginalBackup(
     }
 
     if (await exists(backupContent)) {
-      await fs.copyFile(backupContent, path.join(chromePath, "userContent.css"));
+      await fs.copyFile(
+        backupContent,
+        path.join(chromePath, "userContent.css"),
+      );
     }
   }
 

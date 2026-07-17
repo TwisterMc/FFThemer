@@ -7,6 +7,8 @@ import {
   UpdateCheckResult,
 } from "@shared/types";
 
+const LAST_PROFILE_PATH_KEY = "ffthemer.lastProfilePath";
+
 function errorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error) {
     const message = String((error as { message: unknown }).message);
@@ -19,9 +21,33 @@ function errorMessage(error: unknown): string {
   return "Unexpected error";
 }
 
+function profileFolderName(profilePath: string): string {
+  const normalized = profilePath.replace(/\\/g, "/").replace(/\/+$/, "");
+  const parts = normalized.split("/").filter(Boolean);
+  return parts[parts.length - 1] || profilePath;
+}
+
+function readLastProfilePath(): string {
+  try {
+    return window.localStorage.getItem(LAST_PROFILE_PATH_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function writeLastProfilePath(profilePath: string): void {
+  try {
+    window.localStorage.setItem(LAST_PROFILE_PATH_KEY, profilePath);
+  } catch {
+    // Ignore storage errors so profile selection still works in restrictive environments.
+  }
+}
+
 export function App(): JSX.Element {
   const [profiles, setProfiles] = useState<FirefoxProfile[]>([]);
-  const [profilePath, setProfilePath] = useState<string>("");
+  const [profilePath, setProfilePath] = useState<string>(() =>
+    readLastProfilePath(),
+  );
   const [status, setStatus] = useState<AppStatus | null>(null);
   const [themes, setThemes] = useState<InstalledTheme[]>([]);
   const [selectedThemeId, setSelectedThemeId] = useState<string>("");
@@ -63,7 +89,10 @@ export function App(): JSX.Element {
     try {
       const profileList = await window.ffthemer.getProfiles();
       setProfiles(profileList);
+
+      const lastProfilePath = readLastProfilePath();
       const preferred =
+        profileList.find((profile) => profile.path === lastProfilePath) ||
         profileList.find((profile) => profile.path === profilePath) ||
         profileList.find((profile) => profile.isDefault) ||
         profileList[0];
@@ -107,6 +136,12 @@ export function App(): JSX.Element {
 
   useEffect(() => {
     void refreshProfileData(profilePath);
+  }, [profilePath]);
+
+  useEffect(() => {
+    if (profilePath) {
+      writeLastProfilePath(profilePath);
+    }
   }, [profilePath]);
 
   useEffect(() => {
@@ -325,7 +360,7 @@ export function App(): JSX.Element {
           ) : null}
           {profiles.map((profile) => (
             <option key={profile.id} value={profile.path}>
-              {profile.name}
+              {profile.name} [{profileFolderName(profile.path)}]
               {profile.isDefault ? " (default)" : ""}
             </option>
           ))}
