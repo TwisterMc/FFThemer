@@ -6,6 +6,7 @@ import {
 import {
   checkForUpdates,
   deleteTheme,
+  getInstalledThemePreview,
   getStatus,
   installTheme,
   listThemes,
@@ -15,19 +16,24 @@ import {
 } from "./services/themeManager";
 import { buildRepoPreview } from "./services/themeSource";
 
-function normalizeError(error: unknown): { message: string; code?: string } {
+function normalizeError(error: unknown): Error {
+  let message = "Unknown error";
+  let code: string | undefined;
+
   if (error && typeof error === "object" && "message" in error) {
     const maybeCode =
       "code" in error
         ? String((error as { code?: unknown }).code ?? "")
         : undefined;
-    return {
-      message: String((error as { message: unknown }).message),
-      code: maybeCode || undefined,
-    };
+    message = String((error as { message: unknown }).message);
+    code = maybeCode || undefined;
+  } else if (typeof error === "string") {
+    message = error;
   }
 
-  return { message: "Unknown error" };
+  const ipcError = new Error(code ? `${message} (${code})` : message);
+  ipcError.name = "IpcError";
+  return ipcError;
 }
 
 export function registerIpcHandlers(): void {
@@ -56,6 +62,18 @@ export function registerIpcHandlers(): void {
       throw normalizeError(error);
     }
   });
+
+  ipcMain.handle(
+    "themes:preview-installed",
+    async (_event, profilePath: string, themeId: string) => {
+      try {
+        await assertKnownFirefoxProfilePath(profilePath);
+        return await getInstalledThemePreview(profilePath, themeId);
+      } catch (error) {
+        throw normalizeError(error);
+      }
+    },
+  );
 
   ipcMain.handle("repo:preview", async (_event, url: string) => {
     try {

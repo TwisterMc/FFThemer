@@ -5,7 +5,8 @@ const api: RendererApi = {
   getProfiles: () => ipcRenderer.invoke("profiles:list"),
   getStatus: (profilePath) => ipcRenderer.invoke("status:get", profilePath),
   listThemes: (profilePath) => ipcRenderer.invoke("themes:list", profilePath),
-  previewRepo: (url) => ipcRenderer.invoke("repo:preview", url),
+  getInstalledThemePreview: (profilePath, themeId) =>
+    ipcRenderer.invoke("themes:preview-installed", profilePath, themeId),
   installTheme: (input: InstallThemeInput) =>
     ipcRenderer.invoke("themes:install", input),
   switchTheme: (profilePath, themeId) =>

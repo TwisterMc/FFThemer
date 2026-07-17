@@ -3,14 +3,19 @@ import {
   AppStatus,
   DownloadProgressEvent,
   FirefoxProfile,
+  InstalledThemePreview,
   InstalledTheme,
-  RepoPreview,
   UpdateCheckResult,
 } from "@shared/types";
 
 function errorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error) {
-    return String((error as { message: unknown }).message);
+    const message = String((error as { message: unknown }).message);
+    const remotePrefix = /Error invoking remote method '[^']+':\s*/;
+    const cleaned = message.replace(remotePrefix, "").trim();
+    return cleaned === "[object Object]"
+      ? "Operation failed in main process."
+      : cleaned;
   }
   return "Unexpected error";
 }
@@ -22,7 +27,8 @@ export function App(): JSX.Element {
   const [themes, setThemes] = useState<InstalledTheme[]>([]);
   const [selectedThemeId, setSelectedThemeId] = useState<string>("");
   const [repoUrl, setRepoUrl] = useState<string>("");
-  const [repoPreview, setRepoPreview] = useState<RepoPreview | null>(null);
+  const [installedThemePreview, setInstalledThemePreview] =
+    useState<InstalledThemePreview | null>(null);
   const [updates, setUpdates] = useState<Record<string, UpdateCheckResult>>({});
   const [downloadProgress, setDownloadProgress] =
     useState<DownloadProgressEvent | null>(null);
@@ -140,34 +146,38 @@ export function App(): JSX.Element {
     return () => window.clearInterval(interval);
   }, [profilePath]);
 
-  async function onPreviewRepo(event: FormEvent): Promise<void> {
-    event.preventDefault();
-    if (!repoUrl.trim()) {
-      setNotice("Enter a GitHub URL first.");
+  useEffect(() => {
+    if (!profilePath || !selectedThemeId) {
+      setInstalledThemePreview(null);
       return;
     }
 
-    setActionPending("previewRepo", true);
-    setDownloadProgress(null);
-    try {
-      const preview = await window.ffthemer.previewRepo(repoUrl.trim());
-      setRepoPreview(preview);
-      if (preview.warningExecutables.length > 0) {
-        setNotice(
-          `Warning: executable-looking files found (${preview.warningExecutables
-            .slice(0, 4)
-            .join(", ")}).`,
+    let active = true;
+    setActionPending("themePreview", true);
+    void (async () => {
+      try {
+        const preview = await window.ffthemer.getInstalledThemePreview(
+          profilePath,
+          selectedThemeId,
         );
-      } else {
-        setNotice("Repository parsed. You can install this theme.");
+        if (active) {
+          setInstalledThemePreview(preview);
+        }
+      } catch {
+        if (active) {
+          setInstalledThemePreview(null);
+        }
+      } finally {
+        if (active) {
+          setActionPending("themePreview", false);
+        }
       }
-    } catch (error) {
-      setRepoPreview(null);
-      setNotice(errorMessage(error));
-    } finally {
-      setActionPending("previewRepo", false);
-    }
-  }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [profilePath, selectedThemeId]);
 
   async function onInstallTheme(): Promise<void> {
     if (!profilePath || !repoUrl.trim()) {
@@ -180,17 +190,30 @@ export function App(): JSX.Element {
       const result = await window.ffthemer.installTheme({
         profilePath,
         sourceUrl: repoUrl.trim(),
-        customThemeName: repoPreview?.suggestedThemeName,
-        expectedCommit: repoPreview?.commitSha,
       });
 
       await refreshProfileData(profilePath);
       setSelectedThemeId(result.theme.id);
-      setNotice(
-        result.backupCreated
-          ? "Theme installed. Existing CSS was backed up before setup."
-          : "Theme installed.",
+
+      const activateNow = window.confirm(
+        `Theme \"${result.theme.name}\" installed. Activate it now?`,
       );
+
+      if (activateNow) {
+        await window.ffthemer.switchTheme(profilePath, result.theme.id);
+        await refreshProfileData(profilePath);
+        setNotice(
+          result.backupCreated
+            ? "Theme installed, backup created, and activated. Restart Firefox to apply changes."
+            : "Theme installed and activated. Restart Firefox to apply changes.",
+        );
+      } else {
+        setNotice(
+          result.backupCreated
+            ? "Theme installed. Existing CSS was backed up. Activate the selected theme when ready."
+            : "Theme installed. Activate the selected theme when ready.",
+        );
+      }
     } catch (error) {
       setNotice(errorMessage(error));
     } finally {
@@ -379,7 +402,13 @@ export function App(): JSX.Element {
 
       <section className="panel" aria-labelledby="install-label">
         <h2 id="install-label">Install From GitHub</h2>
-        <form className="install-form" onSubmit={onPreviewRepo}>
+        <form
+          className="install-form"
+          onSubmit={(event: FormEvent) => {
+            event.preventDefault();
+            void onInstallTheme();
+          }}
+        >
           <label htmlFor="repoUrl">GitHub repository URL (https only)</label>
           <input
             id="repoUrl"
@@ -391,26 +420,13 @@ export function App(): JSX.Element {
             aria-describedby="repoHelp"
           />
           <small id="repoHelp">
-            Repo must include userChrome.css or userContent.css.
+            Paste a GitHub repository URL and install. Theme preview appears in
+            Installed Themes once added.
           </small>
           <div className="row-actions">
             <button
               type="submit"
-              disabled={isActionPending("previewRepo")}
-              className="button secondary"
-            >
-              <span className="button-icon" aria-hidden="true">
-                <svg viewBox="0 0 16 16" focusable="false">
-                  <circle cx="8" cy="8" r="2.2" />
-                  <path d="M1.8 8s2-3.5 6.2-3.5S14.2 8 14.2 8s-2 3.5-6.2 3.5S1.8 8 1.8 8Z" />
-                </svg>
-              </span>
-              <span>Preview repository</span>
-            </button>
-            <button
-              type="button"
-              onClick={onInstallTheme}
-              disabled={isActionPending("installTheme") || !repoPreview}
+              disabled={isActionPending("installTheme") || !repoUrl.trim()}
               className="button primary"
             >
               <span className="button-icon" aria-hidden="true">
@@ -424,28 +440,6 @@ export function App(): JSX.Element {
             </button>
           </div>
         </form>
-
-        {repoPreview ? (
-          <article className="preview-card" aria-live="polite">
-            <h3 className="preview-title">{repoPreview.suggestedThemeName}</h3>
-            <p>
-              Branch: <strong>{repoPreview.branch}</strong>
-            </p>
-            <p>
-              Includes: {repoPreview.hasUserChrome ? "userChrome.css" : "-"}{" "}
-              {repoPreview.hasUserContent ? "userContent.css" : "-"}
-            </p>
-            {repoPreview.screenshotDataUrl ? (
-              <img
-                src={repoPreview.screenshotDataUrl}
-                alt="Theme preview screenshot"
-                className="preview-image"
-              />
-            ) : (
-              <p>No screenshot found in repository files.</p>
-            )}
-          </article>
-        ) : null}
       </section>
 
       <section className="panel" aria-labelledby="themes-label">
@@ -543,6 +537,29 @@ export function App(): JSX.Element {
             <span>Update selected theme</span>
           </button>
         </div>
+
+        <article className="preview-card" aria-live="polite">
+          <h3 className="preview-title">Selected Theme Preview</h3>
+          {isActionPending("themePreview") ? (
+            <p>Loading preview...</p>
+          ) : installedThemePreview?.screenshotDataUrl ? (
+            <>
+              <img
+                src={installedThemePreview.screenshotDataUrl}
+                alt="Selected theme preview screenshot"
+                className="preview-image"
+              />
+              {installedThemePreview.imageRelativePath ? (
+                <p>Source image: {installedThemePreview.imageRelativePath}</p>
+              ) : null}
+            </>
+          ) : (
+            <p>
+              No preview image found for this installed theme. You can still
+              switch and test it.
+            </p>
+          )}
+        </article>
 
         <ul className="theme-list" aria-label="Theme status list">
           {themes.map((theme) => (

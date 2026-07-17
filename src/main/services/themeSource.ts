@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import AdmZip from "adm-zip";
-import { RepoPreview } from "../../shared/types";
+import { ReadmeInstallPlan, RepoPreview } from "../../shared/types";
 import { AppError } from "./errors";
 import { exists, listFilesRecursive, slugifyName } from "./fsUtils";
 import {
@@ -41,6 +41,8 @@ export interface ResolvedThemeSource {
   hasUserChrome: boolean;
   hasUserContent: boolean;
   warningExecutables: string[];
+  themeRelativePath: string;
+  readmePlan?: ReadmeInstallPlan;
 }
 
 interface ResolveOptions {
@@ -50,6 +52,156 @@ interface ResolveOptions {
 
 function normalizeSourceUrl(sourceUrl: string): string {
   return sourceUrl.trim();
+}
+
+function normalizePathSlashes(value: string): string {
+  return value.replace(/\\/g, "/");
+}
+
+function dedupeStrings(values: string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+async function readReadmePlan(
+  extractedRoot: string,
+  allFiles: string[],
+): Promise<ReadmeInstallPlan | undefined> {
+  const readmeCandidates = allFiles.filter((file) => {
+    const basename = path.basename(file).toLowerCase();
+    return basename === "readme.md" || basename === "readme.txt";
+  });
+
+  if (readmeCandidates.length === 0) {
+    return undefined;
+  }
+
+  const selectedReadme = readmeCandidates.sort((left, right) => {
+    const leftDepth = path.relative(extractedRoot, left).split(path.sep).length;
+    const rightDepth = path
+      .relative(extractedRoot, right)
+      .split(path.sep).length;
+    return leftDepth - rightDepth;
+  })[0];
+
+  const readmeContent = await fs.readFile(selectedReadme, "utf-8");
+  const lines = readmeContent.split(/\r?\n/).map((line) => line.trim());
+  const numberedOrBullet = lines
+    .filter((line) => /^(?:\d+[.)]|[-*])\s+/.test(line))
+    .filter((line) =>
+      /(install|copy|move|place|put|rename|userchrome|usercontent|chrome)/i.test(
+        line,
+      ),
+    )
+    .slice(0, 8)
+    .map((line) => line.replace(/^(?:\d+[.)]|[-*])\s+/, "").trim());
+
+  const codeTokenPaths: string[] = [];
+  for (const match of readmeContent.matchAll(/`([^`]+)`/g)) {
+    const token = normalizePathSlashes(match[1].trim());
+    if (/\.(css|png|jpg|jpeg|webp|svg)$/i.test(token) || token.includes("/")) {
+      codeTokenPaths.push(token);
+    }
+  }
+
+  const inlinePaths: string[] = [];
+  for (const match of readmeContent.matchAll(
+    /(?:^|\s)(\.?\/?[A-Za-z0-9_./\\-]*(?:userChrome\.css|userContent\.css|chrome\/[A-Za-z0-9_./\\-]+))/gim,
+  )) {
+    inlinePaths.push(normalizePathSlashes(match[1].trim()));
+  }
+
+  const candidatePaths = dedupeStrings([
+    ...codeTokenPaths,
+    ...inlinePaths,
+  ]).slice(0, 20);
+  const summaryLine = lines.find(
+    (line) => line.length > 0 && !line.startsWith("#"),
+  );
+
+  const confidence: ReadmeInstallPlan["confidence"] =
+    candidatePaths.length > 0
+      ? "medium"
+      : numberedOrBullet.length > 0
+        ? "low"
+        : "none";
+
+  return {
+    readmePath: normalizePathSlashes(
+      path.relative(extractedRoot, selectedReadme),
+    ),
+    summary: summaryLine,
+    steps: numberedOrBullet,
+    candidatePaths,
+    confidence,
+  };
+}
+
+function sanitizeCandidatePath(candidate: string): string {
+  return normalizePathSlashes(candidate)
+    .replace(/^['"`]+|['"`]+$/g, "")
+    .replace(/^\.\//, "")
+    .replace(/^\//, "")
+    .replace(/\/+$/, "");
+}
+
+async function resolveThemeRootFromReadmePlan(
+  extractedRoot: string,
+  allFiles: string[],
+  plan?: ReadmeInstallPlan,
+): Promise<string | undefined> {
+  if (!plan || plan.candidatePaths.length === 0) {
+    return undefined;
+  }
+
+  const cssTargets = allFiles.filter((file) => {
+    const lower = path.basename(file).toLowerCase();
+    return lower === "userchrome.css" || lower === "usercontent.css";
+  });
+
+  for (const rawCandidate of plan.candidatePaths) {
+    const candidate = sanitizeCandidatePath(rawCandidate);
+    if (!candidate) {
+      continue;
+    }
+
+    const candidatePath = path.resolve(extractedRoot, candidate);
+    if (!candidatePath.startsWith(path.resolve(extractedRoot))) {
+      continue;
+    }
+
+    const isCssFile = /userchrome\.css|usercontent\.css/i.test(
+      path.basename(candidatePath),
+    );
+    if (isCssFile && (await exists(candidatePath))) {
+      return path.dirname(candidatePath);
+    }
+
+    if (await exists(candidatePath)) {
+      const stat = await fs.stat(candidatePath);
+      if (stat.isDirectory()) {
+        const dirFiles = await listFilesRecursive(candidatePath);
+        const hasCss = dirFiles.some((file) => {
+          const lower = path.basename(file).toLowerCase();
+          return lower === "userchrome.css" || lower === "usercontent.css";
+        });
+        if (hasCss) {
+          return candidatePath;
+        }
+      }
+    }
+
+    const fuzzy = cssTargets.find((absoluteCssPath) => {
+      const relativeCss = normalizePathSlashes(
+        path.relative(extractedRoot, absoluteCssPath),
+      ).toLowerCase();
+      return relativeCss.includes(candidate.toLowerCase());
+    });
+    if (fuzzy) {
+      return path.dirname(fuzzy);
+    }
+  }
+
+  return undefined;
 }
 
 async function getCachedResolvedThemeSource(
@@ -233,7 +385,13 @@ export async function resolveThemeFromGithub(
 
   const extractedRoot = path.join(extractPath, firstFolder.name);
   const allFiles = await listFilesRecursive(extractedRoot);
-  const themeRoot = findThemeRootFromFiles(extractedRoot, allFiles);
+  const readmePlan = await readReadmePlan(extractedRoot, allFiles);
+  const themeRoot =
+    (await resolveThemeRootFromReadmePlan(
+      extractedRoot,
+      allFiles,
+      readmePlan,
+    )) ?? findThemeRootFromFiles(extractedRoot, allFiles);
 
   const hasUserChrome = allFiles.some(
     (file) => path.basename(file).toLowerCase() === "userchrome.css",
@@ -244,6 +402,25 @@ export async function resolveThemeFromGithub(
   const warningExecutables = allFiles
     .filter((file) => isExecutableFile(file))
     .map((file) => path.relative(extractedRoot, file));
+
+  if (readmePlan && readmePlan.confidence !== "none") {
+    const rootRelative = normalizePathSlashes(
+      path.relative(extractedRoot, themeRoot),
+    );
+    const matchedCandidate = readmePlan.candidatePaths.some((candidate) => {
+      const normalizedCandidate =
+        sanitizeCandidatePath(candidate).toLowerCase();
+      if (!normalizedCandidate) {
+        return false;
+      }
+      return (
+        rootRelative.toLowerCase().includes(normalizedCandidate) ||
+        normalizedCandidate.includes(rootRelative.toLowerCase())
+      );
+    });
+
+    readmePlan.confidence = matchedCandidate ? "high" : readmePlan.confidence;
+  }
 
   const resolved: ResolvedThemeSource = {
     owner,
@@ -257,6 +434,10 @@ export async function resolveThemeFromGithub(
     hasUserChrome,
     hasUserContent,
     warningExecutables,
+    themeRelativePath: normalizePathSlashes(
+      path.relative(extractedRoot, themeRoot) || ".",
+    ),
+    readmePlan,
   };
 
   cacheResolvedThemeSource(sourceUrl, resolved);
@@ -334,5 +515,6 @@ export async function buildRepoPreview(
     screenshotDataUrl,
     warningExecutables: resolved.warningExecutables,
     sourceUrl: resolved.sourceUrl,
+    readmePlan: resolved.readmePlan,
   };
 }
