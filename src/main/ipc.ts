@@ -6,6 +6,7 @@ import {
   detectFirefoxProfiles,
 } from "./services/firefoxProfiles";
 import {
+  clearActiveTheme,
   checkForUpdates,
   deleteTheme,
   getStatus,
@@ -123,6 +124,15 @@ export function registerIpcHandlers(): void {
             : undefined,
         });
       });
+    } catch (error) {
+      throw normalizeError(error);
+    }
+  });
+
+  ipcMain.handle("themes:clear-active", async (_event, profilePath: string) => {
+    try {
+      await assertKnownFirefoxProfilePath(profilePath);
+      return await clearActiveTheme(profilePath);
     } catch (error) {
       throw normalizeError(error);
     }

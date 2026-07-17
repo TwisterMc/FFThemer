@@ -8,6 +8,7 @@ import {
 } from "@shared/types";
 
 const TOAST_TIMEOUT_MS = 5000;
+const FIREFOX_DEFAULT_THEME_ID = "__ffthemer_default__";
 
 type ToastTone = "info" | "success" | "error";
 
@@ -131,7 +132,7 @@ export function App(): JSX.Element {
 
       setStatus(newStatus);
       setThemes(themeList);
-      setSelectedThemeId(newStatus.activeThemeId ?? themeList[0]?.id ?? "");
+      setSelectedThemeId(newStatus.activeThemeId ?? FIREFOX_DEFAULT_THEME_ID);
     } catch (error) {
       showToast(errorMessage(error), "error");
     } finally {
@@ -254,6 +255,16 @@ export function App(): JSX.Element {
 
     setActionPending("switchTheme", true);
     try {
+      if (selectedThemeId === FIREFOX_DEFAULT_THEME_ID) {
+        await window.ffthemer.clearActiveTheme(profilePath);
+        await refreshProfileData(profilePath);
+        showToast(
+          "Using Firefox default (custom userChrome/userContent cleared). Restart Firefox to apply changes.",
+          "success",
+        );
+        return;
+      }
+
       await window.ffthemer.switchTheme(profilePath, selectedThemeId);
       await refreshProfileData(profilePath);
       showToast("Theme switched. Restart Firefox to apply changes.", "success");
@@ -479,6 +490,9 @@ export function App(): JSX.Element {
           onChange={(event) => setSelectedThemeId(event.target.value)}
           aria-label="Select installed theme"
         >
+          <option value={FIREFOX_DEFAULT_THEME_ID}>
+            Firefox default (no custom CSS)
+          </option>
           {themes.length === 0 ? (
             <option value="">No themes installed</option>
           ) : null}
@@ -509,7 +523,11 @@ export function App(): JSX.Element {
                 <path d="M3 8.4 6.3 12 13 4" />
               </svg>
             </span>
-            <span>Activate selected theme</span>
+            <span>
+              {selectedThemeId === FIREFOX_DEFAULT_THEME_ID
+                ? "Use Firefox default"
+                : "Activate selected theme"}
+            </span>
           </button>
           <button
             type="button"
@@ -531,6 +549,7 @@ export function App(): JSX.Element {
             disabled={
               isActionPending("deleteTheme") ||
               !selectedThemeId ||
+              selectedThemeId === FIREFOX_DEFAULT_THEME_ID ||
               !selectedTheme ||
               selectedTheme.type !== "managed"
             }
@@ -551,6 +570,7 @@ export function App(): JSX.Element {
             disabled={
               isActionPending("updateTheme") ||
               !selectedThemeId ||
+              selectedThemeId === FIREFOX_DEFAULT_THEME_ID ||
               !updates[selectedThemeId]?.hasUpdate
             }
             aria-label="Update selected theme"

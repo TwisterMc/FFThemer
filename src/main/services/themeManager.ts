@@ -316,6 +316,21 @@ export async function switchTheme(
   return { restartRequired: true };
 }
 
+export async function clearActiveTheme(
+  profilePath: string,
+): Promise<{ restartRequired: boolean }> {
+  await clearRootLoaderFiles(profilePath);
+
+  const state = await readState(profilePath);
+  await writeState(profilePath, {
+    ...state,
+    currentProfilePath: profilePath,
+    activeThemeId: undefined,
+  });
+
+  return { restartRequired: true };
+}
+
 export async function installTheme(
   input: InstallThemeInput,
   onDownloadProgress?: (receivedBytes: number, totalBytes?: number) => void,

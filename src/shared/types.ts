@@ -73,6 +73,9 @@ export interface RendererApi {
   getStatus: (profilePath: string) => Promise<AppStatus>;
   listThemes: (profilePath: string) => Promise<InstalledTheme[]>;
   installTheme: (input: InstallThemeInput) => Promise<InstallThemeResult>;
+  clearActiveTheme: (
+    profilePath: string,
+  ) => Promise<{ restartRequired: boolean }>;
   switchTheme: (
     profilePath: string,
     themeId: string,

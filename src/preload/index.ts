@@ -10,6 +10,8 @@ const api: RendererApi = {
   listThemes: (profilePath) => ipcRenderer.invoke("themes:list", profilePath),
   installTheme: (input: InstallThemeInput) =>
     ipcRenderer.invoke("themes:install", input),
+  clearActiveTheme: (profilePath) =>
+    ipcRenderer.invoke("themes:clear-active", profilePath),
   switchTheme: (profilePath, themeId) =>
     ipcRenderer.invoke("themes:switch", profilePath, themeId),
   deleteTheme: (profilePath, themeId) =>
