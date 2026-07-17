@@ -5,9 +5,6 @@ export interface GithubRepoRef {
   repo: string;
 }
 
-const GITHUB_RE =
-  /^https:\/\/github\.com\/([^\/]+)\/([^\/]+?)(?:\.git)?(?:\/.*)?$/i;
-
 export function parseGithubUrl(url: string): GithubRepoRef {
   let parsed: URL;
   try {
@@ -23,16 +20,31 @@ export function parseGithubUrl(url: string): GithubRepoRef {
     );
   }
 
-  const match = url.match(GITHUB_RE);
-  if (!match) {
+  const host = parsed.hostname.toLowerCase();
+  if (host !== "github.com" && host !== "www.github.com") {
     throw new AppError(
       "Only github.com repository URLs are supported",
       "INVALID_GITHUB_URL",
     );
   }
 
-  const owner = match[1];
-  const repo = match[2];
+  const parts = parsed.pathname.split("/").filter(Boolean);
+  if (parts.length < 2) {
+    throw new AppError(
+      "Only github.com repository URLs are supported",
+      "INVALID_GITHUB_URL",
+    );
+  }
+
+  const owner = parts[0];
+  const repo = parts[1].replace(/\.git$/i, "");
+
+  if (!owner || !repo) {
+    throw new AppError(
+      "Only github.com repository URLs are supported",
+      "INVALID_GITHUB_URL",
+    );
+  }
 
   return { owner, repo };
 }
