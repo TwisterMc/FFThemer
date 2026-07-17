@@ -1,71 +1,31 @@
 # FFThemer
 
-FFThemer is a desktop app for Firefox theme users. It helps you install, switch, update, and remove custom `userChrome.css` and `userContent.css` themes without manually copying files each time.
+FFThemer is a desktop app for Firefox users. It helps you install, switch, update, and manage custom Firefox themes (`userChrome.css` and `userContent.css`) without manually copying files each time.
 
 Works on macOS, Windows, and Linux.
 
-## What You Can Do
+## What It Does
 
 - Automatically detect Firefox profiles
 - Install a theme from a GitHub repository URL
-- Keep multiple themes installed and switch between them
+- Keep multiple themes installed so you can switch between them
 - Check for updates from the original GitHub source
-- Restore your original CSS backup if needed
-
-## Before You Start
-
-- Firefox must be installed.
-- Theme repositories must be on `https://github.com/...`.
-- Firefox must be restarted after switching or updating a theme.
+- Restore your original theme if needed
 
 ## Install And Use
 
 1. Launch FFThemer.
-2. Choose the Firefox profile you want to manage.
-3. Paste a Firefox theme's GitHub theme URL.
+2. Choose the Firefox profile you want to use.
+3. Paste a theme's GitHub URL.
 4. Click Install theme.
-5. Select the installed theme and click Activate selected theme.
+5. Activate the theme.
 6. Restart Firefox.
-
-## Update A Theme
-
-1. Select your profile.
-2. Click Check updates.
-3. If a theme shows update available, select it.
-4. Click Update selected theme.
-5. Restart Firefox.
-
-## Delete A Theme
-
-1. Select the theme.
-2. Click Delete selected theme.
-3. Confirm deletion.
-
-Switching themes does not delete other themes.
-
-## Backup And Restore
-
-On first setup, FFThemer can back up existing `userChrome.css` and `userContent.css` files found in your profile root `chrome` folder.
-
-To restore:
-
-1. Select the profile.
-2. Click Restore original backup.
-3. Restart Firefox.
 
 ## Notes
 
-- Themes manually added to your Firefox `chrome` folder are shown as external themes.
-- External themes can be activated, but they do not support update checks unless installed from GitHub through FFThemer.
-
-## Troubleshooting
-
-- No profiles found:
-  Make sure Firefox has been opened at least once on this machine.
-- Theme does not appear in Firefox:
-  Restart Firefox after activation.
-- Update check fails:
-  Try again later (GitHub API rate limits can apply).
+- Themes can be manually added to your Firefox `chrome` folder if you want to do that, but those will not be checked for updates.
+- Since every theme is different, FFThemer cannot guarantee that a theme will work correctly.
+- This hasn't been tested on Windows and Linux, so please report any issues you encounter on those platforms.
 
 ## Developer Documentation
 
