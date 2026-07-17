@@ -11,6 +11,7 @@ function createWindow(): void {
     minWidth: 900,
     minHeight: 640,
     title: "FFThemer",
+    icon: path.join(app.getAppPath(), "build", "icon.png"),
     autoHideMenuBar: true,
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#111212" : "#f7f7f4",
     webPreferences: {
