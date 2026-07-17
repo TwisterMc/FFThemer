@@ -609,6 +609,34 @@ export function App(): JSX.Element {
         </ul>
       </section>
 
+      <footer className="app-footer" aria-label="Project links">
+        <a
+          className="footer-link"
+          href="https://www.twistermc.com"
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          via TwisterMc
+        </a>
+        <a
+          className="footer-link"
+          href="https://github.com/TwisterMc/FFThemer"
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          FFThemer on GitHub
+        </a>
+        <a
+          className="button primary footer-donate"
+          href="https://ko-fi.com/twistermc"
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label="Donate on Ko-fi"
+        >
+          Donate
+        </a>
+      </footer>
+
       {toast ? (
         <aside className="toast-region" role="status" aria-live="polite">
           <div className={`toast toast-${toast.tone}`}>

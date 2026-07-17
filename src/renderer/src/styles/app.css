@@ -378,6 +378,40 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
+.app-footer {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding: 0.7rem 0.9rem;
+}
+
+.footer-link {
+  color: var(--subtle);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease;
+}
+
+.footer-link:hover {
+  color: var(--text);
+  border-bottom-color: color-mix(in srgb, var(--primary) 60%, transparent);
+}
+
+.footer-link:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.footer-donate {
+  text-decoration: none;
+}
+
 .toast-region {
   position: fixed;
   top: 1rem;
@@ -482,6 +516,11 @@ select:focus-visible {
   .theme-row-actions {
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .app-footer {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
