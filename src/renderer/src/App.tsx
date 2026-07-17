@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   AppStatus,
   DownloadProgressEvent,
@@ -54,7 +54,6 @@ export function App(): JSX.Element {
   const [profilePath, setProfilePath] = useState<string>("");
   const [status, setStatus] = useState<AppStatus | null>(null);
   const [themes, setThemes] = useState<InstalledTheme[]>([]);
-  const [selectedThemeId, setSelectedThemeId] = useState<string>("");
   const [repoUrl, setRepoUrl] = useState<string>("");
   const [updates, setUpdates] = useState<Record<string, UpdateCheckResult>>({});
   const [downloadProgress, setDownloadProgress] =
@@ -81,10 +80,6 @@ export function App(): JSX.Element {
 
   const isBusy = Object.values(pendingActions).some(Boolean);
 
-  const selectedTheme = useMemo(
-    () => themes.find((theme) => theme.id === selectedThemeId),
-    [themes, selectedThemeId],
-  );
   const updateAvailableCount = themes.filter(
     (theme) => updates[theme.id]?.hasUpdate,
   ).length;
@@ -132,7 +127,6 @@ export function App(): JSX.Element {
 
       setStatus(newStatus);
       setThemes(themeList);
-      setSelectedThemeId(newStatus.activeThemeId ?? FIREFOX_DEFAULT_THEME_ID);
     } catch (error) {
       showToast(errorMessage(error), "error");
     } finally {
@@ -218,7 +212,6 @@ export function App(): JSX.Element {
       });
 
       await refreshProfileData(profilePath);
-      setSelectedThemeId(result.theme.id);
 
       const activateNow = window.confirm(
         `Theme \"${result.theme.name}\" installed. Activate it now?`,
@@ -248,14 +241,14 @@ export function App(): JSX.Element {
     }
   }
 
-  async function onSwitchTheme(): Promise<void> {
-    if (!profilePath || !selectedThemeId) {
+  async function onSwitchTheme(themeId: string): Promise<void> {
+    if (!profilePath || !themeId) {
       return;
     }
 
     setActionPending("switchTheme", true);
     try {
-      if (selectedThemeId === FIREFOX_DEFAULT_THEME_ID) {
+      if (themeId === FIREFOX_DEFAULT_THEME_ID) {
         await window.ffthemer.clearActiveTheme(profilePath);
         await refreshProfileData(profilePath);
         showToast(
@@ -265,7 +258,7 @@ export function App(): JSX.Element {
         return;
       }
 
-      await window.ffthemer.switchTheme(profilePath, selectedThemeId);
+      await window.ffthemer.switchTheme(profilePath, themeId);
       await refreshProfileData(profilePath);
       showToast("Theme switched. Restart Firefox to apply changes.", "success");
     } catch (error) {
@@ -275,18 +268,13 @@ export function App(): JSX.Element {
     }
   }
 
-  async function onDeleteTheme(): Promise<void> {
-    if (
-      !profilePath ||
-      !selectedThemeId ||
-      !selectedTheme ||
-      selectedTheme.type !== "managed"
-    ) {
+  async function onDeleteTheme(theme: InstalledTheme): Promise<void> {
+    if (!profilePath || theme.type !== "managed") {
       return;
     }
 
     const confirmed = window.confirm(
-      `Delete theme \"${selectedTheme.name}\"? This only removes local files for that theme.`,
+      `Delete theme \"${theme.name}\"? This only removes local files for that theme.`,
     );
     if (!confirmed) {
       return;
@@ -294,7 +282,7 @@ export function App(): JSX.Element {
 
     setActionPending("deleteTheme", true);
     try {
-      await window.ffthemer.deleteTheme(profilePath, selectedThemeId);
+      await window.ffthemer.deleteTheme(profilePath, theme.id);
       await refreshProfileData(profilePath);
       showToast("Theme deleted.", "success");
     } catch (error) {
@@ -304,12 +292,12 @@ export function App(): JSX.Element {
     }
   }
 
-  async function onCheckUpdates(): Promise<void> {
+  async function onCheckThemeUpdates(themeId: string): Promise<void> {
     if (!profilePath) {
       return;
     }
 
-    setActionPending("checkUpdates", true);
+    setActionPending(`checkUpdates:${themeId}`, true);
     try {
       const results = await window.ffthemer.checkUpdates(profilePath);
       const next: Record<string, UpdateCheckResult> = {};
@@ -317,11 +305,13 @@ export function App(): JSX.Element {
         next[result.themeId] = result;
       }
       setUpdates(next);
-      showToast("Update check complete.");
+      showToast(
+        next[themeId]?.hasUpdate ? "Update available." : "Theme is up to date.",
+      );
     } catch (error) {
       showToast(errorMessage(error), "error");
     } finally {
-      setActionPending("checkUpdates", false);
+      setActionPending(`checkUpdates:${themeId}`, false);
     }
   }
 
@@ -479,121 +469,128 @@ export function App(): JSX.Element {
 
       <section className="panel" aria-labelledby="themes-label">
         <h2 id="themes-label">Installed Themes</h2>
-        <label htmlFor="themeSelect">Theme</label>
-        <select
-          id="themeSelect"
-          value={selectedThemeId}
-          onChange={(event) => setSelectedThemeId(event.target.value)}
-          aria-label="Select installed theme"
-        >
-          <option value={FIREFOX_DEFAULT_THEME_ID}>
-            Firefox default (no custom CSS)
-          </option>
-          {themes.length === 0 ? (
-            <option value="">No themes installed</option>
-          ) : null}
-          {themes.map((theme) => {
-            const hasUpdate = updates[theme.id]?.hasUpdate;
-            return (
-              <option key={theme.id} value={theme.id}>
-                {theme.name}
-                {theme.type === "external" ? " (external)" : ""}
-                {hasUpdate ? " [update available]" : ""}
-              </option>
-            );
-          })}
-        </select>
-        <div
-          className="row-actions segmented-actions"
-          role="group"
-          aria-label="Theme actions"
-        >
-          <button
-            type="button"
-            onClick={onSwitchTheme}
-            disabled={isActionPending("switchTheme") || !selectedThemeId}
-            className="button primary segment"
-          >
-            <span className="button-icon" aria-hidden="true">
-              <svg viewBox="0 0 16 16" focusable="false">
-                <path d="M3 8.4 6.3 12 13 4" />
-              </svg>
-            </span>
-            <span>
-              {selectedThemeId === FIREFOX_DEFAULT_THEME_ID
-                ? "Use Firefox default"
-                : "Activate selected theme"}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={onCheckUpdates}
-            disabled={isActionPending("checkUpdates") || !profilePath}
-            className="button secondary segment"
-          >
-            <span className="button-icon" aria-hidden="true">
-              <svg viewBox="0 0 16 16" focusable="false">
-                <path d="M13.2 8a5.2 5.2 0 1 1-1.4-3.6" />
-                <path d="M13.2 3.4v2.8h-2.8" />
-              </svg>
-            </span>
-            <span>Check updates</span>
-          </button>
-          <button
-            type="button"
-            onClick={onDeleteTheme}
-            disabled={
-              isActionPending("deleteTheme") ||
-              !selectedThemeId ||
-              selectedThemeId === FIREFOX_DEFAULT_THEME_ID ||
-              !selectedTheme ||
-              selectedTheme.type !== "managed"
-            }
-            className="button danger segment"
-          >
-            <span className="button-icon" aria-hidden="true">
-              <svg viewBox="0 0 16 16" focusable="false">
-                <path d="M3.8 4.2h8.4" />
-                <path d="M6.1 4.2V3h3.8v1.2" />
-                <path d="M5 4.2v8.2h6V4.2" />
-              </svg>
-            </span>
-            <span>Delete selected theme</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onUpdateTheme(selectedThemeId)}
-            disabled={
-              isActionPending("updateTheme") ||
-              !selectedThemeId ||
-              selectedThemeId === FIREFOX_DEFAULT_THEME_ID ||
-              !updates[selectedThemeId]?.hasUpdate
-            }
-            aria-label="Update selected theme"
-            className="button secondary segment"
-          >
-            <span className="button-icon" aria-hidden="true">
-              <svg viewBox="0 0 16 16" focusable="false">
-                <path d="M13.2 8a5.2 5.2 0 1 1-1.4-3.6" />
-                <path d="M13.2 3.4v2.8h-2.8" />
-              </svg>
-            </span>
-            <span>Update selected theme</span>
-          </button>
-        </div>
-
         <ul className="theme-list" aria-label="Theme status list">
+          <li key="status-firefox-default">
+            <div className="theme-row-meta">
+              <strong className="theme-name">Firefox default</strong>
+              <span className="theme-badge">Built in</span>
+            </div>
+            <div
+              className="theme-row-actions"
+              role="group"
+              aria-label="Firefox default actions"
+            >
+              <button
+                type="button"
+                onClick={() => onSwitchTheme(FIREFOX_DEFAULT_THEME_ID)}
+                disabled={
+                  isActionPending("switchTheme") ||
+                  status?.activeThemeId === null ||
+                  status?.activeThemeId === undefined
+                }
+                className="button secondary segment"
+              >
+                {!status?.activeThemeId ? (
+                  <span className="button-icon" aria-hidden="true">
+                    <svg viewBox="0 0 16 16" focusable="false">
+                      <path d="M3 8.4 6.3 12 13 4" />
+                    </svg>
+                  </span>
+                ) : null}
+                <span>{status?.activeThemeId ? "Inactive" : "Active"}</span>
+              </button>
+            </div>
+          </li>
           {themes.map((theme) => (
             <li key={`status-${theme.id}`}>
-              <strong className="theme-name">{theme.name}</strong>
-              <span className="theme-badge">
-                {theme.type === "managed" ? "Managed" : "External"}
-              </span>
-              <span className="theme-badge">
-                {updates[theme.id]?.hasUpdate
-                  ? "Update available"
-                  : "Up to date"}
-              </span>
+              <div className="theme-row-meta">
+                <strong className="theme-name">{theme.name}</strong>
+                <span className="theme-badge">
+                  {theme.type === "managed" ? "Managed" : "External"}
+                </span>
+              </div>
+              <div
+                className="theme-row-actions"
+                role="group"
+                aria-label={`${theme.name} actions`}
+              >
+                <button
+                  type="button"
+                  onClick={() => onSwitchTheme(theme.id)}
+                  disabled={
+                    isActionPending("switchTheme") ||
+                    status?.activeThemeId === theme.id
+                  }
+                  className={`button ${status?.activeThemeId === theme.id ? "primary" : "secondary"} segment`}
+                >
+                  {status?.activeThemeId === theme.id ? (
+                    <span className="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 16 16" focusable="false">
+                        <path d="M3 8.4 6.3 12 13 4" />
+                      </svg>
+                    </span>
+                  ) : null}
+                  <span>
+                    {status?.activeThemeId === theme.id ? "Active" : "Activate"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onCheckThemeUpdates(theme.id)}
+                  disabled={
+                    isActionPending(`checkUpdates:${theme.id}`) || !profilePath
+                  }
+                  className="button secondary segment"
+                  aria-label={`Check updates for ${theme.name}`}
+                >
+                  <span className="button-icon" aria-hidden="true">
+                    <svg viewBox="0 0 16 16" focusable="false">
+                      <path d="M13.2 8a5.2 5.2 0 1 1-1.4-3.6" />
+                      <path d="M13.2 3.4v2.8h-2.8" />
+                    </svg>
+                  </span>
+                  <span>
+                    {updates[theme.id]?.hasUpdate
+                      ? "Update available"
+                      : "Up to date"}
+                  </span>
+                </button>
+                {theme.type === "managed" ? (
+                  <button
+                    type="button"
+                    onClick={() => onDeleteTheme(theme)}
+                    disabled={isActionPending("deleteTheme")}
+                    className="button danger segment"
+                    aria-label={`Delete ${theme.name}`}
+                  >
+                    <span className="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 16 16" focusable="false">
+                        <path d="M3.8 4.2h8.4" />
+                        <path d="M6.1 4.2V3h3.8v1.2" />
+                        <path d="M5 4.2v8.2h6V4.2" />
+                      </svg>
+                    </span>
+                    <span>Delete</span>
+                  </button>
+                ) : null}
+                {updates[theme.id]?.hasUpdate ? (
+                  <button
+                    type="button"
+                    onClick={() => onUpdateTheme(theme.id)}
+                    disabled={isActionPending("updateTheme")}
+                    aria-label={`Update ${theme.name}`}
+                    className="button primary segment"
+                  >
+                    <span className="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 16 16" focusable="false">
+                        <path d="M13.2 8a5.2 5.2 0 1 1-1.4-3.6" />
+                        <path d="M13.2 3.4v2.8h-2.8" />
+                      </svg>
+                    </span>
+                    <span>Update</span>
+                  </button>
+                ) : null}
+              </div>
             </li>
           ))}
         </ul>

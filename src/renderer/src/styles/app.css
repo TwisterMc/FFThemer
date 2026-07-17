@@ -329,9 +329,25 @@ select:focus-visible {
   padding: 0.56rem 0.68rem;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.4rem;
   background: var(--panel-strong);
+}
+
+.theme-row-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.theme-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .theme-name {
@@ -442,6 +458,15 @@ select:focus-visible {
   .activity-chip {
     right: 0.5rem;
     bottom: 0.5rem;
+  }
+
+  .theme-list li {
+    align-items: flex-start;
+  }
+
+  .theme-row-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 
