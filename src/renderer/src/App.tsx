@@ -3,7 +3,6 @@ import {
   AppStatus,
   DownloadProgressEvent,
   FirefoxProfile,
-  InstalledThemePreview,
   InstalledTheme,
   UpdateCheckResult,
 } from "@shared/types";
@@ -27,8 +26,6 @@ export function App(): JSX.Element {
   const [themes, setThemes] = useState<InstalledTheme[]>([]);
   const [selectedThemeId, setSelectedThemeId] = useState<string>("");
   const [repoUrl, setRepoUrl] = useState<string>("");
-  const [installedThemePreview, setInstalledThemePreview] =
-    useState<InstalledThemePreview | null>(null);
   const [updates, setUpdates] = useState<Record<string, UpdateCheckResult>>({});
   const [downloadProgress, setDownloadProgress] =
     useState<DownloadProgressEvent | null>(null);
@@ -145,39 +142,6 @@ export function App(): JSX.Element {
 
     return () => window.clearInterval(interval);
   }, [profilePath]);
-
-  useEffect(() => {
-    if (!profilePath || !selectedThemeId) {
-      setInstalledThemePreview(null);
-      return;
-    }
-
-    let active = true;
-    setActionPending("themePreview", true);
-    void (async () => {
-      try {
-        const preview = await window.ffthemer.getInstalledThemePreview(
-          profilePath,
-          selectedThemeId,
-        );
-        if (active) {
-          setInstalledThemePreview(preview);
-        }
-      } catch {
-        if (active) {
-          setInstalledThemePreview(null);
-        }
-      } finally {
-        if (active) {
-          setActionPending("themePreview", false);
-        }
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [profilePath, selectedThemeId]);
 
   async function onInstallTheme(): Promise<void> {
     if (!profilePath || !repoUrl.trim()) {
@@ -537,29 +501,6 @@ export function App(): JSX.Element {
             <span>Update selected theme</span>
           </button>
         </div>
-
-        <article className="preview-card" aria-live="polite">
-          <h3 className="preview-title">Selected Theme Preview</h3>
-          {isActionPending("themePreview") ? (
-            <p>Loading preview...</p>
-          ) : installedThemePreview?.screenshotDataUrl ? (
-            <>
-              <img
-                src={installedThemePreview.screenshotDataUrl}
-                alt="Selected theme preview screenshot"
-                className="preview-image"
-              />
-              {installedThemePreview.imageRelativePath ? (
-                <p>Source image: {installedThemePreview.imageRelativePath}</p>
-              ) : null}
-            </>
-          ) : (
-            <p>
-              No preview image found for this installed theme. You can still
-              switch and test it.
-            </p>
-          )}
-        </article>
 
         <ul className="theme-list" aria-label="Theme status list">
           {themes.map((theme) => (

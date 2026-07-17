@@ -15,6 +15,7 @@ This document is for contributors and maintainers.
 - Per-profile managed themes stored under `chrome/ffthemer/themes/`
 - Metadata per managed theme in `theme-meta.json`
 - External (manually added) theme detection
+- No repository or installed-theme preview pipeline (install/switch only)
 - Active theme switching via root loader files in profile `chrome/`
 - Backup/restore for pre-existing root CSS files
 - On-demand and periodic update checks against latest GitHub commit

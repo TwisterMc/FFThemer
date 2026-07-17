@@ -6,7 +6,6 @@ import {
 import {
   checkForUpdates,
   deleteTheme,
-  getInstalledThemePreview,
   getStatus,
   installTheme,
   listThemes,
@@ -14,7 +13,6 @@ import {
   switchTheme,
   updateTheme,
 } from "./services/themeManager";
-import { buildRepoPreview } from "./services/themeSource";
 
 function normalizeError(error: unknown): Error {
   let message = "Unknown error";
@@ -58,26 +56,6 @@ export function registerIpcHandlers(): void {
     try {
       await assertKnownFirefoxProfilePath(profilePath);
       return await listThemes(profilePath);
-    } catch (error) {
-      throw normalizeError(error);
-    }
-  });
-
-  ipcMain.handle(
-    "themes:preview-installed",
-    async (_event, profilePath: string, themeId: string) => {
-      try {
-        await assertKnownFirefoxProfilePath(profilePath);
-        return await getInstalledThemePreview(profilePath, themeId);
-      } catch (error) {
-        throw normalizeError(error);
-      }
-    },
-  );
-
-  ipcMain.handle("repo:preview", async (_event, url: string) => {
-    try {
-      return await buildRepoPreview(url);
     } catch (error) {
       throw normalizeError(error);
     }

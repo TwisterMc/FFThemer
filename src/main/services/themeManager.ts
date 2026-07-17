@@ -3,7 +3,6 @@ import path from "node:path";
 import crypto from "node:crypto";
 import {
   AppStatus,
-  InstalledThemePreview,
   InstallThemeInput,
   InstallThemeResult,
   InstalledTheme,
@@ -29,52 +28,6 @@ interface ProfileState {
   activeThemeId?: string;
   backupPath?: string;
   currentProfilePath?: string;
-}
-
-const PREVIEW_IMAGE_EXTENSIONS = new Set([
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".webp",
-  ".gif",
-]);
-
-function mimeTypeFromExtension(ext: string): string {
-  if (ext === ".png") return "image/png";
-  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
-  if (ext === ".webp") return "image/webp";
-  if (ext === ".gif") return "image/gif";
-  return "application/octet-stream";
-}
-
-async function findInstalledThemePreview(
-  themeFolderPath: string,
-): Promise<InstalledThemePreview> {
-  const allFiles = await listFilesRecursive(themeFolderPath);
-  const imageFiles = allFiles.filter((filePath) =>
-    PREVIEW_IMAGE_EXTENSIONS.has(path.extname(filePath).toLowerCase()),
-  );
-
-  if (imageFiles.length === 0) {
-    return {};
-  }
-
-  const preferred = imageFiles.find((filePath) =>
-    /preview|screenshot/i.test(path.basename(filePath)),
-  );
-  const chosen = preferred ?? imageFiles[0];
-  const bytes = await fs.readFile(chosen);
-  const ext = path.extname(chosen).toLowerCase();
-  const mime = mimeTypeFromExtension(ext);
-  const imageRelativePath = path
-    .relative(themeFolderPath, chosen)
-    .split(path.sep)
-    .join("/");
-
-  return {
-    screenshotDataUrl: `data:${mime};base64,${bytes.toString("base64")}`,
-    imageRelativePath,
-  };
 }
 
 async function ensureDir(target: string): Promise<void> {
@@ -334,19 +287,6 @@ export async function listThemes(
   return [...managedThemes, ...externalThemes].filter(
     (theme): theme is InstalledTheme => Boolean(theme),
   );
-}
-
-export async function getInstalledThemePreview(
-  profilePath: string,
-  themeId: string,
-): Promise<InstalledThemePreview> {
-  const themes = await listThemes(profilePath);
-  const selected = themes.find((theme) => theme.id === themeId);
-  if (!selected) {
-    throw new AppError("Theme not found", "THEME_NOT_FOUND");
-  }
-
-  return findInstalledThemePreview(selected.folderPath);
 }
 
 export async function switchTheme(

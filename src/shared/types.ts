@@ -32,29 +32,6 @@ export interface InstalledTheme {
   latestCommit?: string;
 }
 
-export interface RepoPreview {
-  valid: boolean;
-  owner: string;
-  repo: string;
-  branch: string;
-  commitSha: string;
-  suggestedThemeName: string;
-  hasUserChrome: boolean;
-  hasUserContent: boolean;
-  screenshotDataUrl?: string;
-  warningExecutables: string[];
-  sourceUrl: string;
-  readmePlan?: ReadmeInstallPlan;
-}
-
-export interface ReadmeInstallPlan {
-  readmePath?: string;
-  summary?: string;
-  steps: string[];
-  candidatePaths: string[];
-  confidence: "none" | "low" | "medium" | "high";
-}
-
 export interface InstallThemeInput {
   profilePath: string;
   sourceUrl: string;
@@ -89,20 +66,11 @@ export interface DownloadProgressEvent {
   percent?: number;
 }
 
-export interface InstalledThemePreview {
-  screenshotDataUrl?: string;
-  imageRelativePath?: string;
-}
-
 export interface RendererApi {
   getProfiles: () => Promise<FirefoxProfile[]>;
   getStatus: (profilePath: string) => Promise<AppStatus>;
   listThemes: (profilePath: string) => Promise<InstalledTheme[]>;
   installTheme: (input: InstallThemeInput) => Promise<InstallThemeResult>;
-  getInstalledThemePreview: (
-    profilePath: string,
-    themeId: string,
-  ) => Promise<InstalledThemePreview>;
   switchTheme: (
     profilePath: string,
     themeId: string,

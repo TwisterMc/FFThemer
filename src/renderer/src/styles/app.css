@@ -301,49 +301,6 @@ select:focus-visible {
   border-radius: 10px;
 }
 
-.preview-card {
-  display: grid;
-  gap: 0.42rem;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 0.8rem;
-  background: var(--panel-strong);
-}
-
-.preview-title,
-.preview-card p {
-  margin: 0;
-}
-
-.preview-image {
-  width: 100%;
-  max-height: 280px;
-  object-fit: contain;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--panel-strong) 86%, transparent);
-}
-
-.readme-plan {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 0.62rem 0.68rem;
-  background: color-mix(in srgb, var(--panel) 84%, transparent);
-  display: grid;
-  gap: 0.4rem;
-}
-
-.readme-plan p {
-  margin: 0;
-}
-
-.readme-plan ol {
-  margin: 0;
-  padding-left: 1.2rem;
-  display: grid;
-  gap: 0.22rem;
-}
-
 .theme-list {
   display: grid;
   gap: 0.48rem;

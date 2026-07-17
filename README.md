@@ -8,7 +8,6 @@ Works on macOS, Windows, and Linux.
 
 - Automatically detect Firefox profiles
 - Install a theme from a GitHub repository URL
-- Preview theme screenshots when available
 - Keep multiple themes installed and switch between them
 - Check for updates from the original GitHub source
 - Restore your original CSS backup if needed
@@ -23,7 +22,7 @@ Works on macOS, Windows, and Linux.
 
 1. Launch FFThemer.
 2. Choose the Firefox profile you want to manage.
-3. Paste a Firefox theme's GitHub theme URL and click Preview.
+3. Paste a Firefox theme's GitHub theme URL.
 4. Click Install theme.
 5. Select the installed theme and click Activate selected theme.
 6. Restart Firefox.
