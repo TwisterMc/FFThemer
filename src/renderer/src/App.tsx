@@ -388,8 +388,8 @@ export function App(): JSX.Element {
       </header>
 
       <section className="panel" aria-labelledby="profile-label">
-        <h2 id="profile-label">Profile</h2>
-        <label htmlFor="profileSelect">Firefox profile</label>
+        <h2 id="profile-label">Firefox Profile</h2>
+        <label htmlFor="profileSelect">Profile</label>
         <select
           id="profileSelect"
           value={profilePath}
@@ -419,7 +419,7 @@ export function App(): JSX.Element {
                 <path d="M13.2 3.4v2.8h-2.8" />
               </svg>
             </span>
-            <span>Refresh profiles</span>
+            <span>Refresh</span>
           </button>
           <button
             type="button"
@@ -435,13 +435,13 @@ export function App(): JSX.Element {
                 <path d="M13.5 7.8A5.5 5.5 0 1 1 8 2.8" />
               </svg>
             </span>
-            <span>Restore original backup</span>
+            <span>Restore backup</span>
           </button>
         </div>
       </section>
 
       <section className="panel" aria-labelledby="install-label">
-        <h2 id="install-label">Install From GitHub</h2>
+        <h2 id="install-label">Install Theme</h2>
         <form
           className="install-form"
           onSubmit={(event: FormEvent) => {
@@ -449,7 +449,7 @@ export function App(): JSX.Element {
             void onInstallTheme();
           }}
         >
-          <label htmlFor="repoUrl">GitHub repository URL (https only)</label>
+          <label htmlFor="repoUrl">Repository URL</label>
           <input
             id="repoUrl"
             type="url"
@@ -457,11 +457,7 @@ export function App(): JSX.Element {
             onChange={(event) => setRepoUrl(event.target.value)}
             placeholder="https://github.com/owner/repo"
             required
-            aria-describedby="repoHelp"
           />
-          <small id="repoHelp">
-            Paste a GitHub repository URL and install.
-          </small>
           <div className="row-actions">
             <button
               type="submit"
