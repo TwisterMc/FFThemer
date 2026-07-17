@@ -363,6 +363,21 @@ select:focus-visible {
   background: color-mix(in srgb, var(--panel) 84%, transparent);
 }
 
+.theme-badge-link {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.theme-badge-link:hover {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--line));
+  color: color-mix(in srgb, var(--primary) 80%, var(--text));
+}
+
+.theme-badge-link:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .toast-region {
   position: fixed;
   top: 1rem;

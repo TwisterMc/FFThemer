@@ -505,9 +505,22 @@ export function App(): JSX.Element {
             <li key={`status-${theme.id}`}>
               <div className="theme-row-meta">
                 <strong className="theme-name">{theme.name}</strong>
-                <span className="theme-badge">
-                  {theme.type === "managed" ? "Managed" : "External"}
-                </span>
+                {theme.metadata?.sourceUrl &&
+                /^https?:\/\/(www\.)?github\.com\//i.test(
+                  theme.metadata.sourceUrl,
+                ) ? (
+                  <a
+                    className="theme-badge theme-badge-link"
+                    href={theme.metadata.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    aria-label={`Open GitHub repository for ${theme.name}`}
+                  >
+                    GitHub
+                  </a>
+                ) : (
+                  <span className="theme-badge">Custom</span>
+                )}
               </div>
               <div
                 className="theme-row-actions"

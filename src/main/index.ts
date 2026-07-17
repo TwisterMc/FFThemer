@@ -1,8 +1,17 @@
-import { app, BrowserWindow, nativeTheme } from "electron";
+import { app, BrowserWindow, nativeTheme, shell } from "electron";
 import path from "node:path";
 import { registerIpcHandlers } from "./ipc";
 
 const isDev = !app.isPackaged;
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -30,9 +39,19 @@ function createWindow(): void {
     win.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
 
-  win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
-  win.webContents.on("will-navigate", (event) => {
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (isHttpUrl(url)) {
+      void shell.openExternal(url);
+    }
+    return { action: "deny" };
+  });
+
+  win.webContents.on("will-navigate", (event, url) => {
     event.preventDefault();
+
+    if (isHttpUrl(url)) {
+      void shell.openExternal(url);
+    }
   });
 }
 
