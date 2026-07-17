@@ -3,6 +3,9 @@ import { InstallThemeInput, RendererApi } from "../shared/types";
 
 const api: RendererApi = {
   getProfiles: () => ipcRenderer.invoke("profiles:list"),
+  getLastSelectedProfile: () => ipcRenderer.invoke("profiles:last:get"),
+  setLastSelectedProfile: (profilePath) =>
+    ipcRenderer.invoke("profiles:last:set", profilePath),
   getStatus: (profilePath) => ipcRenderer.invoke("status:get", profilePath),
   listThemes: (profilePath) => ipcRenderer.invoke("themes:list", profilePath),
   installTheme: (input: InstallThemeInput) =>

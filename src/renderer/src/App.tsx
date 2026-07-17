@@ -7,7 +7,6 @@ import {
   UpdateCheckResult,
 } from "@shared/types";
 
-const LAST_PROFILE_PATH_KEY = "ffthemer.lastProfilePath";
 const TOAST_TIMEOUT_MS = 5000;
 
 type ToastTone = "info" | "success" | "error";
@@ -35,27 +34,20 @@ function profileFolderName(profilePath: string): string {
   return parts[parts.length - 1] || profilePath;
 }
 
-function readLastProfilePath(): string {
-  try {
-    return window.localStorage.getItem(LAST_PROFILE_PATH_KEY) ?? "";
-  } catch {
-    return "";
-  }
+function normalizeProfilePathForCompare(value: string): string {
+  return value.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
 }
 
-function writeLastProfilePath(profilePath: string): void {
-  try {
-    window.localStorage.setItem(LAST_PROFILE_PATH_KEY, profilePath);
-  } catch {
-    // Ignore storage errors so profile selection still works in restrictive environments.
+function pathsMatch(left: string, right: string): boolean {
+  if (!left || !right) {
+    return false;
   }
+  return normalizeProfilePathForCompare(left) === normalizeProfilePathForCompare(right);
 }
 
 export function App(): JSX.Element {
   const [profiles, setProfiles] = useState<FirefoxProfile[]>([]);
-  const [profilePath, setProfilePath] = useState<string>(() =>
-    readLastProfilePath(),
-  );
+  const [profilePath, setProfilePath] = useState<string>("");
   const [status, setStatus] = useState<AppStatus | null>(null);
   const [themes, setThemes] = useState<InstalledTheme[]>([]);
   const [selectedThemeId, setSelectedThemeId] = useState<string>("");
@@ -99,13 +91,14 @@ export function App(): JSX.Element {
   async function refreshProfiles(): Promise<void> {
     setActionPending("refreshProfiles", true);
     try {
-      const profileList = await window.ffthemer.getProfiles();
+      const [profileList, lastProfilePath] = await Promise.all([
+        window.ffthemer.getProfiles(),
+        window.ffthemer.getLastSelectedProfile(),
+      ]);
       setProfiles(profileList);
-
-      const lastProfilePath = readLastProfilePath();
       const preferred =
-        profileList.find((profile) => profile.path === lastProfilePath) ||
-        profileList.find((profile) => profile.path === profilePath) ||
+        profileList.find((profile) => pathsMatch(profile.path, lastProfilePath ?? "")) ||
+        profileList.find((profile) => pathsMatch(profile.path, profilePath)) ||
         profileList.find((profile) => profile.isDefault) ||
         profileList[0];
 
@@ -150,9 +143,13 @@ export function App(): JSX.Element {
   }, [profilePath]);
 
   useEffect(() => {
-    if (profilePath) {
-      writeLastProfilePath(profilePath);
+    if (!profilePath) {
+      return;
     }
+
+    void window.ffthemer.setLastSelectedProfile(profilePath).catch(() => {
+      // Keep selection functional even if persisting preferences fails.
+    });
   }, [profilePath]);
 
   useEffect(() => {

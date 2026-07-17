@@ -1,4 +1,6 @@
-import { ipcMain } from "electron";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { app, ipcMain } from "electron";
 import {
   assertKnownFirefoxProfilePath,
   detectFirefoxProfiles,
@@ -13,6 +15,29 @@ import {
   switchTheme,
   updateTheme,
 } from "./services/themeManager";
+
+interface AppPreferences {
+  lastSelectedProfilePath?: string;
+}
+
+function getPreferencesPath(): string {
+  return path.join(app.getPath("userData"), "preferences.json");
+}
+
+async function readPreferences(): Promise<AppPreferences> {
+  try {
+    const raw = await fs.readFile(getPreferencesPath(), "utf-8");
+    return JSON.parse(raw) as AppPreferences;
+  } catch {
+    return {};
+  }
+}
+
+async function writePreferences(preferences: AppPreferences): Promise<void> {
+  const preferencesPath = getPreferencesPath();
+  await fs.mkdir(path.dirname(preferencesPath), { recursive: true });
+  await fs.writeFile(preferencesPath, JSON.stringify(preferences, null, 2), "utf-8");
+}
 
 function normalizeError(error: unknown): Error {
   let message = "Unknown error";
@@ -38,6 +63,26 @@ export function registerIpcHandlers(): void {
   ipcMain.handle("profiles:list", async () => {
     try {
       return await detectFirefoxProfiles();
+    } catch (error) {
+      throw normalizeError(error);
+    }
+  });
+
+  ipcMain.handle("profiles:last:get", async () => {
+    try {
+      const preferences = await readPreferences();
+      return preferences.lastSelectedProfilePath;
+    } catch (error) {
+      throw normalizeError(error);
+    }
+  });
+
+  ipcMain.handle("profiles:last:set", async (_event, profilePath: string) => {
+    try {
+      await assertKnownFirefoxProfilePath(profilePath);
+      const preferences = await readPreferences();
+      preferences.lastSelectedProfilePath = profilePath;
+      await writePreferences(preferences);
     } catch (error) {
       throw normalizeError(error);
     }

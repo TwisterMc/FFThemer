@@ -68,6 +68,8 @@ export interface DownloadProgressEvent {
 
 export interface RendererApi {
   getProfiles: () => Promise<FirefoxProfile[]>;
+  getLastSelectedProfile: () => Promise<string | undefined>;
+  setLastSelectedProfile: (profilePath: string) => Promise<void>;
   getStatus: (profilePath: string) => Promise<AppStatus>;
   listThemes: (profilePath: string) => Promise<InstalledTheme[]>;
   installTheme: (input: InstallThemeInput) => Promise<InstallThemeResult>;
