@@ -70,3 +70,7 @@ To restore:
 ## Developer Documentation
 
 If you are building or contributing to FFThemer, see [README.dev.md](README.dev.md).
+
+## License
+
+FFThemer is open source under the [MIT License](LICENSE).
