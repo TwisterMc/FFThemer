@@ -8,6 +8,14 @@ import {
 } from "@shared/types";
 
 const LAST_PROFILE_PATH_KEY = "ffthemer.lastProfilePath";
+const TOAST_TIMEOUT_MS = 5000;
+
+type ToastTone = "info" | "success" | "error";
+
+interface ToastState {
+  message: string;
+  tone: ToastTone;
+}
 
 function errorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error) {
@@ -55,10 +63,14 @@ export function App(): JSX.Element {
   const [updates, setUpdates] = useState<Record<string, UpdateCheckResult>>({});
   const [downloadProgress, setDownloadProgress] =
     useState<DownloadProgressEvent | null>(null);
-  const [notice, setNotice] = useState<string>("");
+  const [toast, setToast] = useState<ToastState | null>(null);
   const [pendingActions, setPendingActions] = useState<Record<string, boolean>>(
     {},
   );
+
+  function showToast(message: string, tone: ToastTone = "info"): void {
+    setToast({ message, tone });
+  }
 
   function setActionPending(action: string, pending: boolean): void {
     setPendingActions((current) => ({
@@ -101,7 +113,7 @@ export function App(): JSX.Element {
         setProfilePath(preferred.path);
       }
     } catch (error) {
-      setNotice(errorMessage(error));
+      showToast(errorMessage(error), "error");
     } finally {
       setActionPending("refreshProfiles", false);
     }
@@ -122,9 +134,8 @@ export function App(): JSX.Element {
       setStatus(newStatus);
       setThemes(themeList);
       setSelectedThemeId(newStatus.activeThemeId ?? themeList[0]?.id ?? "");
-      setNotice("");
     } catch (error) {
-      setNotice(errorMessage(error));
+      showToast(errorMessage(error), "error");
     } finally {
       setActionPending("refreshProfileData", false);
     }
@@ -143,6 +154,18 @@ export function App(): JSX.Element {
       writeLastProfilePath(profilePath);
     }
   }, [profilePath]);
+
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setToast(null);
+    }, TOAST_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
   useEffect(() => {
     const unsubscribe = window.ffthemer.onDownloadProgress((event) => {
@@ -201,20 +224,22 @@ export function App(): JSX.Element {
       if (activateNow) {
         await window.ffthemer.switchTheme(profilePath, result.theme.id);
         await refreshProfileData(profilePath);
-        setNotice(
+        showToast(
           result.backupCreated
             ? "Theme installed, backup created, and activated. Restart Firefox to apply changes."
             : "Theme installed and activated. Restart Firefox to apply changes.",
+          "success",
         );
       } else {
-        setNotice(
+        showToast(
           result.backupCreated
             ? "Theme installed. Existing CSS was backed up. Activate the selected theme when ready."
             : "Theme installed. Activate the selected theme when ready.",
+          "success",
         );
       }
     } catch (error) {
-      setNotice(errorMessage(error));
+      showToast(errorMessage(error), "error");
     } finally {
       setActionPending("installTheme", false);
     }
@@ -229,9 +254,9 @@ export function App(): JSX.Element {
     try {
       await window.ffthemer.switchTheme(profilePath, selectedThemeId);
       await refreshProfileData(profilePath);
-      setNotice("Theme switched. Restart Firefox to apply changes.");
+      showToast("Theme switched. Restart Firefox to apply changes.", "success");
     } catch (error) {
-      setNotice(errorMessage(error));
+      showToast(errorMessage(error), "error");
     } finally {
       setActionPending("switchTheme", false);
     }
@@ -258,9 +283,9 @@ export function App(): JSX.Element {
     try {
       await window.ffthemer.deleteTheme(profilePath, selectedThemeId);
       await refreshProfileData(profilePath);
-      setNotice("Theme deleted.");
+      showToast("Theme deleted.", "success");
     } catch (error) {
-      setNotice(errorMessage(error));
+      showToast(errorMessage(error), "error");
     } finally {
       setActionPending("deleteTheme", false);
     }
@@ -279,9 +304,9 @@ export function App(): JSX.Element {
         next[result.themeId] = result;
       }
       setUpdates(next);
-      setNotice("Update check complete.");
+      showToast("Update check complete.");
     } catch (error) {
-      setNotice(errorMessage(error));
+      showToast(errorMessage(error), "error");
     } finally {
       setActionPending("checkUpdates", false);
     }
@@ -297,9 +322,9 @@ export function App(): JSX.Element {
     try {
       await window.ffthemer.updateTheme(profilePath, themeId);
       await refreshProfileData(profilePath);
-      setNotice("Theme updated. Restart Firefox to apply changes.");
+      showToast("Theme updated. Restart Firefox to apply changes.", "success");
     } catch (error) {
-      setNotice(errorMessage(error));
+      showToast(errorMessage(error), "error");
     } finally {
       setActionPending("updateTheme", false);
     }
@@ -321,9 +346,12 @@ export function App(): JSX.Element {
     try {
       await window.ffthemer.restoreBackup(profilePath);
       await refreshProfileData(profilePath);
-      setNotice("Backup restored. Restart Firefox to apply changes.");
+      showToast(
+        "Profile reset complete. Restart Firefox to apply changes.",
+        "success",
+      );
     } catch (error) {
-      setNotice(errorMessage(error));
+      showToast(errorMessage(error), "error");
     } finally {
       setActionPending("restoreBackup", false);
     }
@@ -419,8 +447,7 @@ export function App(): JSX.Element {
             aria-describedby="repoHelp"
           />
           <small id="repoHelp">
-            Paste a GitHub repository URL and install. Theme preview appears in
-            Installed Themes once added.
+            Paste a GitHub repository URL and install.
           </small>
           <div className="row-actions">
             <button
@@ -554,15 +581,29 @@ export function App(): JSX.Element {
         </ul>
       </section>
 
-      <footer className="status-bar" role="status" aria-live="polite">
-        {isActionPending("installTheme") || isActionPending("updateTheme")
-          ? downloadProgress?.percent !== undefined
+      {toast ? (
+        <aside className="toast-region" role="status" aria-live="polite">
+          <div className={`toast toast-${toast.tone}`}>
+            <p>{toast.message}</p>
+            <button
+              type="button"
+              className="toast-close"
+              onClick={() => setToast(null)}
+              aria-label="Dismiss notification"
+            >
+              ×
+            </button>
+          </div>
+        </aside>
+      ) : null}
+
+      {isActionPending("installTheme") || isActionPending("updateTheme") ? (
+        <aside className="activity-chip" role="status" aria-live="polite">
+          {downloadProgress?.percent !== undefined
             ? `Downloading theme: ${downloadProgress.percent}%`
-            : "Working..."
-          : isBusy
-            ? "Working..."
-            : notice || "Ready"}
-      </footer>
+            : "Working..."}
+        </aside>
+      ) : null}
     </main>
   );
 }

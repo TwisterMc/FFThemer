@@ -333,31 +333,75 @@ select:focus-visible {
   background: color-mix(in srgb, var(--panel) 84%, transparent);
 }
 
-.status-bar {
-  grid-column: 1 / -1;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 0.72rem 0.82rem;
-  background: var(--panel);
-  backdrop-filter: blur(18px);
-  color: var(--subtle);
-  font-weight: 500;
-  position: relative;
-  overflow: hidden;
+.toast-region {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  width: min(420px, calc(100vw - 2rem));
+  z-index: 50;
+  pointer-events: none;
 }
 
-.app-shell[aria-busy="true"] .status-bar::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    transparent 0%,
-    color-mix(in srgb, var(--primary) 16%, transparent) 35%,
-    transparent 70%
-  );
-  transform: translateX(-120%);
-  animation: status-sheen 1400ms linear infinite;
+.toast {
+  pointer-events: auto;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel-strong);
+  box-shadow: var(--surface-shadow);
+  padding: 0.7rem 0.84rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+  animation: rise-in 220ms var(--ease-smooth);
+}
+
+.toast p {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.toast-info {
+  border-color: color-mix(in srgb, var(--line) 75%, var(--primary));
+}
+
+.toast-success {
+  border-color: color-mix(in srgb, #1fbe65 50%, var(--line));
+}
+
+.toast-error {
+  border-color: color-mix(in srgb, var(--danger) 50%, var(--line));
+}
+
+.toast-close {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--subtle);
+  border-radius: 8px;
+  width: 1.7rem;
+  height: 1.7rem;
+  cursor: pointer;
+  line-height: 1;
+  font-size: 1.2rem;
+}
+
+.toast-close:hover {
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+}
+
+.activity-chip {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  background: var(--panel-strong);
+  box-shadow: var(--surface-shadow);
+  z-index: 40;
 }
 
 @media (max-width: 940px) {
@@ -372,6 +416,18 @@ select:focus-visible {
 
   .headline-row {
     align-items: flex-start;
+  }
+
+  .toast-region {
+    top: 0.7rem;
+    right: 0.5rem;
+    left: 0.5rem;
+    width: auto;
+  }
+
+  .activity-chip {
+    right: 0.5rem;
+    bottom: 0.5rem;
   }
 }
 
