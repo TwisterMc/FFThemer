@@ -36,7 +36,11 @@ async function readPreferences(): Promise<AppPreferences> {
 async function writePreferences(preferences: AppPreferences): Promise<void> {
   const preferencesPath = getPreferencesPath();
   await fs.mkdir(path.dirname(preferencesPath), { recursive: true });
-  await fs.writeFile(preferencesPath, JSON.stringify(preferences, null, 2), "utf-8");
+  await fs.writeFile(
+    preferencesPath,
+    JSON.stringify(preferences, null, 2),
+    "utf-8",
+  );
 }
 
 function normalizeError(error: unknown): Error {

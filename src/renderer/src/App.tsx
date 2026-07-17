@@ -42,7 +42,10 @@ function pathsMatch(left: string, right: string): boolean {
   if (!left || !right) {
     return false;
   }
-  return normalizeProfilePathForCompare(left) === normalizeProfilePathForCompare(right);
+  return (
+    normalizeProfilePathForCompare(left) ===
+    normalizeProfilePathForCompare(right)
+  );
 }
 
 export function App(): JSX.Element {
@@ -97,7 +100,9 @@ export function App(): JSX.Element {
       ]);
       setProfiles(profileList);
       const preferred =
-        profileList.find((profile) => pathsMatch(profile.path, lastProfilePath ?? "")) ||
+        profileList.find((profile) =>
+          pathsMatch(profile.path, lastProfilePath ?? ""),
+        ) ||
         profileList.find((profile) => pathsMatch(profile.path, profilePath)) ||
         profileList.find((profile) => profile.isDefault) ||
         profileList[0];
