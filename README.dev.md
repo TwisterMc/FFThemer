@@ -65,6 +65,23 @@ npm run build
 npm run package
 ```
 
+## GitHub Release From Tag
+
+This repository includes a GitHub Actions workflow at `.github/workflows/release-on-tag.yml`.
+
+When you push a tag that starts with `v` (for example, `v0.2.0`), GitHub Actions will:
+
+- Build and package the app on macOS, Windows, and Linux
+- Create or update the GitHub Release for that tag
+- Upload prebuilt binaries from each OS build to the release
+
+Create and push a release tag:
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
 ## Known Limitations
 
 - GitHub API token auth is not yet implemented

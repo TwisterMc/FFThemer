@@ -14,6 +14,8 @@ Works on macOS, Windows, and Linux.
 
 ## Install And Use
 
+Prebuilt desktop binaries are published in GitHub Releases for macOS, Windows, and Linux.
+
 1. Launch FFThemer.
 2. Choose the Firefox profile you want to use.
 3. Paste a theme's GitHub URL.
