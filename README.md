@@ -33,6 +33,12 @@ Prebuilt desktop binaries are published in GitHub Releases for macOS, Windows, a
 
 If you are building or contributing to FFThemer, see [README.dev.md](README.dev.md).
 
+Additional project policies and GitHub contribution docs:
+
+- [Contributing guide](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [Code of conduct](CODE_OF_CONDUCT.md)
+
 ## License
 
 FFThemer is open source under the [MIT License](LICENSE).

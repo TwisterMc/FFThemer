@@ -1,0 +1,66 @@
+name: Bug report
+description: Report a reproducible problem in FFThemer
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please provide enough detail to reproduce the problem.
+        If this may have a security impact, say so clearly in the summary.
+
+  - type: input
+    id: version
+    attributes:
+      label: FFThemer version
+      description: Release version or commit hash
+      placeholder: v0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the actual behavior and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open FFThemer
+        2. Select profile...
+        3. Install theme from...
+        4. Observe...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Paste any useful output, screenshots, or error messages.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmation
+      options:
+        - label: I searched for existing issues before creating this report.
+          required: true
